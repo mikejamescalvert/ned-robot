@@ -35,7 +35,8 @@ holds a real spoken conversation powered by Claude, and acts on his actual life 
 email).
 
 **Success:** he says "Hey Ned" from his desk, it drives over, natural back-and-forth, under
-~1.5s from wake word to first syllable.
+~1.5s from the moment he stops speaking to Ned's first syllable. That is the number he feels;
+measure that one, not wake-word-to-audio. Wake word detection itself is local and near-instant.
 
 ## Where work happens (read before doing anything)
 
@@ -61,6 +62,7 @@ Cloud writes the code; only the Pi says it works.
 ned-robot/
 ├── PROJECT.md            # this file
 ├── STATUS.md             # current phase, blockers, next action — every session updates it
+├── BOM.md                # parts list by phase; buy per phase, never ahead of the gate
 ├── motion/               # ROS 2 Python pkg. ONLY code that knows ROS 2 exists.
 │   └── motion/{node.py,api.py,safety.py}
 ├── ned/                  # Claude Agent SDK app
@@ -82,8 +84,15 @@ found last night reads it there.
   purchase.
 - **Compute:** Raspberry Pi 5 16GB on the faceplate, powered from the Create's USB-C. Ubuntu
   (for ROS 2 LTS), not Raspberry Pi OS. Node.js installed so Claude Code runs here.
-- **Mic:** ReSpeaker USB 4-Mic Array — far-field, non-negotiable. **Speaker:** small USB.
-  **Camera:** Pi Camera Module 3.
+- **Mic:** Seeed reSpeaker XVF3800 USB 4-Mic Array — far-field, hardware echo cancellation,
+  direction-of-arrival. Non-negotiable. (Replaces the Mic Array v2.0; same family, newer chip.)
+- **Speaker:** plugs into the mic array's 3.5mm jack, never into the Pi — the echo canceller
+  only works against audio it played itself. Phase 0: a small powered speaker with 3.5mm input
+  (Creative Pebble V2), USB power from a spare charger, not the Pi. On the robot: a bare
+  speaker on the array's JST header and its 5W amp. Playback through the array is 16kHz;
+  accept it, revisit in Phase 5.
+- **Camera:** Pi Camera Module 3 on a short mast (~40–60cm) so it sees the desk, not table
+  legs. Plan the faceplate around the mast in Phase 1. Needs the Pi 5 (22-pin) camera cable.
 - **Optional:** RPLIDAR C1 for SLAM, Phase 5. **Network:** Tailscale, no port forwarding.
 
 ## Architecture (hold this line)
@@ -99,6 +108,20 @@ Movement is **Claude tool use**, not a command parser: `drive_to`, `turn`, `dock
 `remember(fact)`. Claude picks the sequence; the handler only executes. No intent classifier,
 no rules engine in front of it.
 
+**Bodies.** Ned is one identity that may later have more than one body (one per floor —
+wheels do not do stairs, and never will; see Out of scope). Build for that from the first
+commit, cheaply:
+
+- Every motion and camera tool takes a `body` argument: an enum of known body IDs, exactly one
+  value until a second body exists. Claude picks the body the way it picks the tool.
+- Only the body that heard the wake word speaks. Other bodies execute silently.
+- Location is a fact each body reports (floor, room, docked), never a constant in a prompt or
+  tool description. No hardcoded "the office".
+- Memory sits behind an interface from day one, even when the first backing store is a file.
+- Each Pi's `/etc/ned/env` carries `NED_BODY`. Logs and metrics are tagged with it.
+- Motion APIs bind to localhost today; with a second body they bind to the Tailscale
+  interface with a shared secret. Nothing else changes.
+
 ## Deploy contract
 
 - `main` is always deployable; nothing merges without CI green.
@@ -112,13 +135,32 @@ no rules engine in front of it.
 ## Non-negotiable constraints
 
 - **Latency is the product.** Wake word local; STT/LLM/TTS stream; TTS interruptible mid-word.
-  Over ~2s dead air feels broken.
+  Over ~2s dead air feels broken. Rules that follow from it:
+  - Log per-stage timings on every turn (end of speech → transcript → first token → first
+    audio → first sound out of the speaker), next to the cost line. Tune the silence timeout
+    by ear on hardware, not in the cloud.
+  - Keep persistent connections to STT and TTS. Send each sentence to TTS as it completes.
+  - Run the model at low effort; thinking before answering is dead air. Fable-class models
+    cannot be turned down enough for conversation and are not candidates for the voice loop.
+  - System prompt and tool list are byte-stable across turns so prompt caching hits. Volatile
+    facts (time, battery, location) go after the cached prefix.
+  - A tool call doubles the round trip. Ned says a short line ("on my way") before a movement
+    tool call in the same turn, so speech plays while the wheels start.
 - **Safety stop.** Bumper/cliff cancels in-flight motion inside the motion layer, no LLM
   round-trip in the path.
 - **Bounded movement.** Distance and angle clamped in the motion layer regardless of what the
   model asks. Never more than a couple meters per call.
 - **Cost visibility.** Log per-conversation API spend from day one.
 - **Cloud STT/LLM/TTS is fine.** No local inference in v1.
+- **Camera on demand only.** A frame is captured only on an explicit `look` tool call, never
+  continuously. It goes to Claude and is discarded unless `remember` stores it. A visible LED
+  is on whenever the camera is live. Client calls happen in this office.
+
+## Out of scope
+
+- **Stairs.** A wheeled disc base cannot climb; the cliff sensors exist to keep it away from
+  the edge. A second floor gets a second body, or Ned gets carried.
+- **Local inference.** v1 is cloud STT/LLM/TTS.
 
 ## Phases
 
@@ -129,18 +171,22 @@ Each ends with a hardware observation logged in `STATUS.md` + a git tag.
 hard 80% — don't let hardware enthusiasm skip it.
 
 **1 — Motion layer.** Create 3 + ROS 2 + the API node. *Done when:* `curl` drives it a meter
-and back, bumper stream observable.
+and back, bumper stream observable. Known gotcha: the Create 3 sleeps on the dock and can drop
+USB-C payload power, rebooting the Pi mid-write. Keep it awake via ROS or shut the Pi down
+cleanly before docking; decide here, not in Phase 2. Log battery % alongside API cost.
 
 **2 — First tool loop.** `drive_to`, `turn` as tools. *Done when:* "Hey Ned, come here" across
 the room makes it move and confirm verbally.
 
-**3 — Senses.** Camera + `look`. *Done when:* "what's on my desk?" answered accurately.
+**3 — Senses.** Camera + `look`, on the mast, with the LED and the on-demand rule above.
+*Done when:* "what's on my desk?" answered accurately.
 
 **4 — Useful.** Calendar/Gmail/Todoist MCP tools. *Done when:* announces a meeting unprompted,
 adds a task by voice.
 
 **5 — Character and polish.** Persistent memory of the office and of Mike, Ned's personality,
-ambient behaviors, optional LiDAR.
+ambient behaviors, optional LiDAR. Shared memory store is decided here; a second body (see
+Bodies) is not bought until Phase 2 is signed off on the first one.
 
 ## How to work with him
 

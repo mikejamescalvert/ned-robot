@@ -49,8 +49,20 @@ On Tuesday, surface B: flash Ubuntu 24.04 Server (64-bit) with Raspberry Pi Imag
 SSH key preconfigured, headless), install Tailscale and Node.js, start
 `claude remote-control --name ned` inside tmux, and confirm `arecord -l` shows the XVF3800.
 
+## Decisions logged this week (now in PROJECT.md)
+
+- Latency target restated as end-of-speech → first syllable; per-stage timing logged per turn.
+- Voice loop runs the model at low effort; Ned speaks a short line before a movement tool call.
+- One Ned, possibly many bodies: `body` enum on motion/camera tools, `NED_BODY` in env, memory
+  behind an interface, no hardcoded location. Second body not before Phase 2 sign-off.
+- Camera on demand only, LED when live, frames discarded unless remembered. Mast at desk height.
+- Stairs out of scope. Create 3 dock-sleep power gotcha assigned to Phase 1.
+- `BOM.md` is now a real parts list by phase (it was a stray copy of the old PROJECT.md).
+
 ## Session log
 
 - 2026-09-03 — Governing prompt landed in `PROJECT.md`. `STATUS.md` created.
 - 2026-09-03 — Phase 0 parts ordered (list above), ETA 2026-09-08. Mic swapped to XVF3800.
   Distro pin proposed: 24.04 + Jazzy.
+- 2026-09-03 — Design decisions from the planning conversation folded into `PROJECT.md`;
+  `BOM.md` rewritten as a parts list.

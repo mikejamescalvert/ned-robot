@@ -5,8 +5,8 @@ See `PROJECT.md` for the rules.
 
 ## Current phase
 
-**Phase 0 — Desk brain, no wheels.** Hardware ordered, arriving Tue 2026-09-08. No code in
-the repo yet. Cloud-only prep week until the parts land.
+**Phase 0 — Desk brain, no wheels.** Hardware arrived 2026-09-08. Bring-up scripts are in
+`deploy/`; the Pi has not been flashed yet. No agent code in the repo yet.
 
 ## Hardware on order (Phase 0)
 
@@ -32,22 +32,21 @@ None. Nothing has run on the Pi.
 
 Open decisions that gate Phase 0 setup — settle before installing anything on the Pi:
 
-- [ ] **Ubuntu / ROS 2 pin.** Proposed: **Ubuntu 24.04 LTS + ROS 2 Jazzy Jalisco** (LTS to
-  May 2029). Lyrical Luth (May 2026, Ubuntu 26.04) is LTS but three months old; iRobot's
-  Create 3 packages and the community Pi 5 + Create 3 write-ups are on Jazzy, and the Create 3
-  firmware is the one piece of this stack we cannot patch. Awaiting Mike's ack.
+- [x] **Ubuntu / ROS 2 pin: Ubuntu 24.04 LTS + ROS 2 Jazzy Jalisco** (LTS to May 2029).
+  Pinned 2026-09-08 on hardware day; Mike read the reasoning and did not object. Lyrical Luth
+  (Ubuntu 26.04) was rejected because the Create 3 ecosystem is on Jazzy and its firmware is
+  the one piece we cannot patch. Change this only with a written reason here.
 - [ ] STT vendor, chosen on streaming latency.
 - [ ] TTS vendor, chosen on streaming latency and mid-word interruptibility.
 - [ ] Continuous listening vs wake-word-only (client calls happen in the office).
 
 ## Next action
 
-Before Tuesday, in cloud sessions: ack the distro pin, pick STT/TTS vendors, and scaffold the
-repo (`ned/` package, `tests/`, CI) so hardware day is flash-and-run, not decide-and-install.
+Mike, on hardware: follow `deploy/README.md` top to bottom. Flash 24.04, run
+`deploy/bootstrap.sh`, run `deploy/check-audio.sh`, start `deploy/ned-remote.sh`, then tell
+the `ned` session what the audio check printed. That is the first surface B observation.
 
-On Tuesday, surface B: flash Ubuntu 24.04 Server (64-bit) with Raspberry Pi Imager (Wi-Fi +
-SSH key preconfigured, headless), install Tailscale and Node.js, start
-`claude remote-control --name ned` inside tmux, and confirm `arecord -l` shows the XVF3800.
+Cloud, in parallel: STT/TTS vendor shortlist; repo scaffold (`ned/` package, `tests/`, CI).
 
 ## Decisions logged this week (now in PROJECT.md)
 
@@ -66,3 +65,5 @@ SSH key preconfigured, headless), install Tailscale and Node.js, start
   Distro pin proposed: 24.04 + Jazzy.
 - 2026-09-03 — Design decisions from the planning conversation folded into `PROJECT.md`;
   `BOM.md` rewritten as a parts list.
+- 2026-09-08 — Hardware arrived. `deploy/` bring-up added (README, bootstrap, audio check,
+  Remote Control wrapper, env template). Distro pinned 24.04 + Jazzy.

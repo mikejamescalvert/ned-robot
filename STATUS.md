@@ -27,8 +27,21 @@ array's jack or its AEC has nothing to cancel against.
 ## Last hardware observation (surface B)
 
 2026-09-08 — Pi 5 flashed with Ubuntu 24.04, bootstrapped, on Tailscale. `claude
-remote-control --name ned` running in tmux and visible in the Claude app. Audio check result
-not yet recorded (see Next action).
+remote-control --name ned` running in tmux and visible in the Claude app.
+
+`deploy/check-audio.sh` passed. Mike heard himself on playback. Distance not measured; the
+six-foot test is part of the Phase 0 done criterion, not this check.
+
+```
+Bus 002 Device 002: ID 2886:001a Seeed Technology Co., Ltd. reSpeaker XVF3800 4-Mic Array
+reSpeaker is ALSA card 0
+card 0: Array [reSpeaker XVF3800 4-Mic Array], device 0: USB Audio [USB Audio]   # capture
+card 0: Array [reSpeaker XVF3800 4-Mic Array], device 0: USB Audio [USB Audio]   # playback
+```
+
+Facts for the agent config: USB id `2886:001a`, ALSA card name `Array`, capture and playback
+both on `plughw:CARD=Array,DEV=0`. Use the card *name*, not the number; the number can change
+across reboots.
 
 ## Blockers
 
@@ -44,11 +57,11 @@ Open decisions that gate Phase 0 setup — settle before installing anything on 
 
 ## Next action
 
-Mike, on hardware: follow `deploy/README.md` top to bottom. Flash 24.04, run
-`deploy/bootstrap.sh`, run `deploy/check-audio.sh`, start `deploy/ned-remote.sh`, then tell
-the `ned` session what the audio check printed. That is the first surface B observation.
+Hardware bring-up is done. The Pi needs nothing more until there is agent code to run.
 
-Cloud, in parallel: STT/TTS vendor shortlist; repo scaffold (`ned/` package, `tests/`, CI).
+Cloud, next: settle STT and TTS vendors (shortlist with streaming latency numbers), then
+scaffold the repo (`ned/` package, `tests/`, CI) and the first runnable loop: wake word →
+STT → Claude → TTS on the desk. Continuous-vs-wake-word decision comes with the vendor pick.
 
 ## Decisions logged this week (now in PROJECT.md)
 
@@ -71,3 +84,5 @@ Cloud, in parallel: STT/TTS vendor shortlist; repo scaffold (`ned/` package, `te
   Remote Control wrapper, env template). Distro pinned 24.04 + Jazzy.
 - 2026-09-08 — First surface B session up. Two bring-up snags fixed in `deploy/`: workspace
   trust dialog must be accepted once interactively; wrapper now passes `--spawn=same-dir`.
+- 2026-09-08 — Audio check passed on hardware (card `Array`, USB `2886:001a`). Phase 0
+  hardware bring-up complete; Phase 0 itself stays open until the 3-turn conversation test.

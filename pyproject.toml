@@ -37,6 +37,8 @@ packages = ["ned"]
 [tool.ruff]
 line-length = 100
 target-version = "py311"
+# ruff >= 0.16 formats fenced code in Markdown; docs quote code as its source writes it.
+extend-exclude = ["*.md"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP"]

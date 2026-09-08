@@ -3,12 +3,31 @@
 openWakeWord trains a custom phrase entirely from synthetic speech. No recordings needed for
 the first model; add real ones later if false wakes are a problem.
 
-1. Open the openWakeWord training notebook in Google Colab (free GPU is enough):
-   https://github.com/dscripka/openWakeWord/blob/main/notebooks/automatic_model_training.ipynb
-2. Set the target phrase to `hey ned`. Leave the rest at defaults for the first run.
-   Expect roughly 30–60 minutes.
-3. Download the resulting `hey_ned.onnx` (ONNX, not tflite).
-4. Put it at `models/hey_ned.onnx`, commit, push, and deploy.
+**Do not use the notebook in the openWakeWord repo.** Its setup cell pins packages that have no
+builds for the Python that Colab ships in 2026 (`piper-phonemize`, `speexdsp-ns`), so it fails
+before training starts. Observed on hardware day. Use the patched community notebook instead:
+
+https://colab.research.google.com/github/alfiedennen/openwakeword-colab-2026/blob/main/train_wakeword.ipynb
+
+1. Open it in a desktop browser. Runtime → Change runtime type → a GPU (T4 on the free tier).
+2. Find the cell that sets the phrase (cell 10 in the current version) and change it to:
+
+   ```python
+   TARGET_PHRASE = ['hey ned']
+   MODEL_NAME    = 'hey_ned'
+   ```
+
+3. Runtime → Run all. Expect about 2.5 hours on a free T4, about 80 minutes on a Pro L4. Every
+   cell checks its own output and re-creates what is missing, so a dropped session can simply
+   be re-run.
+4. The last cell downloads `hey_ned.onnx` through the browser. Keep the ONNX, not tflite.
+5. Copy it to the Pi and commit it:
+
+   ```
+   scp hey_ned.onnx mike@ned:~/ned-robot/models/
+   ```
+
+   then in Ned Brain: "commit models/hey_ned.onnx and push a branch".
 
 Tuning knobs on the Pi (in `/etc/ned/env`): `NED_WAKE_THRESHOLD` (0.5 default; raise toward
 0.7 if it false-wakes during calls) and `NED_WAKE_FRAMES` (consecutive 80 ms frames above the

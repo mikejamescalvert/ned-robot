@@ -1,0 +1,19 @@
+[Unit]
+Description=Ned agent (wake word, STT, Claude, TTS)
+After=network-online.target sound.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mike
+WorkingDirectory=/home/mike/ned-robot
+EnvironmentFile=/etc/ned/env
+ExecStart=/home/mike/.local/bin/uv run --extra pi ned-agent run
+Restart=on-failure
+RestartSec=3
+# Audio on Ubuntu needs the audio group; uv needs HOME for its cache.
+SupplementaryGroups=audio
+Environment=HOME=/home/mike
+
+[Install]
+WantedBy=multi-user.target

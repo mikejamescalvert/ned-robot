@@ -83,7 +83,8 @@ found last night reads it there.
   payload power, ROS 2 native. Education channels only — verify price/availability before
   purchase.
 - **Compute:** Raspberry Pi 5 16GB on the faceplate, powered from the Create's USB-C. Ubuntu
-  (for ROS 2 LTS), not Raspberry Pi OS. Node.js installed so Claude Code runs here.
+  (for ROS 2 LTS), not Raspberry Pi OS. Claude Code via the native installer (no Node.js needed).
+  Bring-up is `deploy/README.md` + `deploy/bootstrap.sh`; nothing is installed by hand.
 - **Mic:** Seeed reSpeaker XVF3800 USB 4-Mic Array — far-field, hardware echo cancellation,
   direction-of-arrival. Non-negotiable. (Replaces the Mic Array v2.0; same family, newer chip.)
 - **Speaker:** plugs into the mic array's 3.5mm jack, never into the Pi — the echo canceller

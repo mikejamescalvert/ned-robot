@@ -51,17 +51,18 @@ Open decisions that gate Phase 0 setup — settle before installing anything on 
   Pinned 2026-09-08 on hardware day; Mike read the reasoning and did not object. Lyrical Luth
   (Ubuntu 26.04) was rejected because the Create 3 ecosystem is on Jazzy and its firmware is
   the one piece we cannot patch. Change this only with a written reason here.
-- [ ] STT vendor, chosen on streaming latency.
-- [ ] TTS vendor, chosen on streaming latency and mid-word interruptibility.
-- [ ] Continuous listening vs wake-word-only (client calls happen in the office).
+- [ ] **Voice stack** — proposed in `docs/decisions/0001-voice-stack.md`: Pipecat, Deepgram
+  Flux STT, Cartesia Sonic TTS, openWakeWord "Hey Ned", wake-word-only with a follow-up
+  window, Claude Opus 5 at low effort. Awaiting Mike's ack.
+- [ ] **API keys on the Pi** — Deepgram, Cartesia, Anthropic, in `/etc/ned/env`. Mike.
 
 ## Next action
 
 Hardware bring-up is done. The Pi needs nothing more until there is agent code to run.
 
-Cloud, next: settle STT and TTS vendors (shortlist with streaming latency numbers), then
-scaffold the repo (`ned/` package, `tests/`, CI) and the first runnable loop: wake word →
-STT → Claude → TTS on the desk. Continuous-vs-wake-word decision comes with the vendor pick.
+Mike: ack decision 0001 (or name a swap), then create the three accounts and put the keys in
+`/etc/ned/env`. Cloud, in parallel: scaffold the repo (`ned/` package, `tests/`, CI) and the
+first runnable Pipecat loop; train the "Hey Ned" wake word model.
 
 ## Decisions logged this week (now in PROJECT.md)
 
@@ -86,3 +87,6 @@ STT → Claude → TTS on the desk. Continuous-vs-wake-word decision comes with 
   trust dialog must be accepted once interactively; wrapper now passes `--spawn=same-dir`.
 - 2026-09-08 — Audio check passed on hardware (card `Array`, USB `2886:001a`). Phase 0
   hardware bring-up complete; Phase 0 itself stays open until the 3-turn conversation test.
+- 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
+  PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
+  voice path. Remote Control session named "Ned Brain".

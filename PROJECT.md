@@ -68,6 +68,7 @@ ned-robot/
 │   └── motion/{node.py,api.py,safety.py}
 ├── ned/                  # Claude Agent SDK app
 │   └── {main.py,audio/,tools/,memory/}
+├── docs/decisions/       # numbered decision pages with reasoning and sources
 ├── prompts/              # Ned's persona + system prompts, versioned
 ├── deploy/               # systemd units, update.sh, tailscale + bootstrap notes
 ├── tests/                # must pass with no hardware attached
@@ -102,8 +103,11 @@ found last night reads it there.
 1. **Motion layer** — Python ROS 2 node exposing a narrow local HTTP API: `drive(distance_m)`,
    `turn(degrees)`, `dock()`, `undock()`, `pose()`, plus bumper/cliff/dock event stream. Only
    code that imports `rclpy`.
-2. **Agent layer** — Python (Claude Agent SDK). Wake word, streaming STT, Claude conversation,
-   streaming TTS, barge-in, memory. Calls motion API over localhost.
+2. **Agent layer** — Python. Wake word, streaming STT, Claude conversation, streaming TTS,
+   barge-in, memory. Built on Pipecat, calling the Anthropic Messages API directly; the Claude
+   Agent SDK is *not* in the conversational path (seconds of startup per call) and is reserved
+   for long background tasks, if ever. Calls motion API over localhost. Vendor picks and the
+   reasoning: `docs/decisions/0001-voice-stack.md`.
 3. **Integration layer** — MCP clients for Calendar, Gmail, Todoist as Claude tools.
 
 Movement is **Claude tool use**, not a command parser: `drive_to`, `turn`, `dock`, `look`,
@@ -210,8 +214,10 @@ and output arriving after completion rather than streaming.
 Mitigate: fixed `--name`, always inside tmux so it can be reattached over SSH, and a
 permission mode for the Ned repo that doesn't block on prompts.
 
-## Open decisions to raise early
+## Decisions
 
-- Ubuntu version / ROS 2 distro pinning on the Pi 5 — settle before installing anything.
-- STT and TTS vendors, chosen on streaming latency, not price.
-- Continuous listening vs wake-word-only, in an office where client calls happen.
+Settled decisions live in `docs/decisions/` as numbered pages with their reasoning and
+sources. Do not relitigate one without adding a new page that supersedes it.
+
+- 0001 — Voice stack: pipeline, STT, TTS, wake word, listening mode, model. (Ubuntu 24.04 +
+  ROS 2 Jazzy is recorded in `STATUS.md`; it gets its own page when Phase 1 starts.)

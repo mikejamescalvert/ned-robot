@@ -25,8 +25,8 @@ MSG
 fi
 
 tmux new-session -d -s ned -c "$REPO" \
-  "while true; do claude remote-control --name ned --permission-mode acceptEdits --spawn=same-dir; \
+  "while true; do claude remote-control --name \"Ned Brain\" --permission-mode acceptEdits --spawn=same-dir; \
    echo; echo 'remote-control exited; restarting in 10 s (Ctrl+C to stop)'; sleep 10; done"
 echo "tmux session 'ned' started in $REPO."
 echo "Attach: tmux attach -t ned    Detach: Ctrl+B then D"
-echo "Find it in the Claude app under Code as 'ned'."
+echo "Find it in the Claude app under Code as 'Ned Brain'."

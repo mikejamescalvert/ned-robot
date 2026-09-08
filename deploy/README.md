@@ -70,12 +70,12 @@ folder whose trust dialog has not been accepted, and the wrapper cannot answer i
 wrapper passes `--spawn=same-dir` so the server never prompts about spawn mode.
 
 Detach with `Ctrl+B` then `D`. From then on, the session is in the Claude app under Code as
-**ned**. To reattach over SSH: `tmux attach -t ned`. The wrapper restarts the server if it
+**Ned Brain**. To reattach over SSH: `tmux attach -t ned`. The wrapper restarts the server if it
 gives up after a long network outage.
 
 ## 7. Record the observation
 
-Open the **ned** session from the phone and tell it what `check-audio.sh` printed and whether
+Open the **Ned Brain** session from the phone and tell it what `check-audio.sh` printed and whether
 you heard yourself. It updates `STATUS.md` and pushes a branch. That is the hardware
 observation that Phase 0 setup requires.
 

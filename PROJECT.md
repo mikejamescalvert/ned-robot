@@ -17,8 +17,9 @@ blockers, next action.
 
 ## Naming
 
-The robot is **Ned**. Repo `ned-robot`, Python package `ned`, systemd units `ned-*`, Remote
-Control session `ned`.
+The robot is **Ned**. Repo `ned-robot`, Python package `ned`, systemd units `ned-*`. The
+on-Pi Remote Control session is **Ned Brain** (tmux session `ned`); the cloud session that
+writes code is **Ned The Robot**. The names tell Mike which surface he is talking to.
 
 **Wake word is "Hey Ned", never "Ned" alone.** A single syllable gives a keyword spotter very
 little to match on, and "Ned" collides with said, head, bed, red, dead, and Fred in ordinary
@@ -46,7 +47,7 @@ unit tests, CI, docs, refactors. Always branch and open a PR. Never push to `mai
 a hardware behavior works — you can't see the robot.
 
 **B. On-Pi Remote Control session (hardware in the loop).** Claude Code on the Pi's Ubuntu,
-started as `claude remote-control --name ned` inside tmux, driven from the mobile app's Code tab
+started by `deploy/ned-remote.sh` (`claude remote-control --name "Ned Brain"` inside tmux), driven from the mobile app's Code tab
 or claude.ai/code. Real machine, real devices. For ROS 2 topic debugging, audio device
 enumeration, latency measurement, systemd, restarts. Keep changes small, push as a branch — the
 Pi must not become a snowflake with uncommitted fixes.
@@ -206,7 +207,7 @@ Users have reported Remote Control sessions going stale after hours idle (tmux p
 attachable while the app spins), permission prompts not rendering on mobile in some versions,
 and output arriving after completion rather than streaming.
 
-Mitigate: fixed `--name ned`, always inside tmux so it can be reattached over SSH, and a
+Mitigate: fixed `--name`, always inside tmux so it can be reattached over SSH, and a
 permission mode for the Ned repo that doesn't block on prompts.
 
 ## Open decisions to raise early

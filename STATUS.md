@@ -26,7 +26,9 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
-None. Nothing has run on the Pi.
+2026-09-08 — Pi 5 flashed with Ubuntu 24.04, bootstrapped, on Tailscale. `claude
+remote-control --name ned` running in tmux and visible in the Claude app. Audio check result
+not yet recorded (see Next action).
 
 ## Blockers
 
@@ -67,3 +69,5 @@ Cloud, in parallel: STT/TTS vendor shortlist; repo scaffold (`ned/` package, `te
   `BOM.md` rewritten as a parts list.
 - 2026-09-08 — Hardware arrived. `deploy/` bring-up added (README, bootstrap, audio check,
   Remote Control wrapper, env template). Distro pinned 24.04 + Jazzy.
+- 2026-09-08 — First surface B session up. Two bring-up snags fixed in `deploy/`: workspace
+  trust dialog must be accepted once interactively; wrapper now passes `--spawn=same-dir`.

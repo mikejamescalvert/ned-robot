@@ -61,8 +61,13 @@ hardware is verified. Note the ALSA card number it prints; the agent config will
 
 ```bash
 claude auth login          # first time only; opens a URL to approve on the phone
+cd ~/ned-robot && claude   # first time only; accept "trust this folder", then /exit
 deploy/ned-remote.sh       # starts tmux session "ned" running claude remote-control
 ```
+
+The interactive `claude` run is required once per checkout: Claude Code will not run in a
+folder whose trust dialog has not been accepted, and the wrapper cannot answer it. The
+wrapper passes `--spawn=same-dir` so the server never prompts about spawn mode.
 
 Detach with `Ctrl+B` then `D`. From then on, the session is in the Claude app under Code as
 **ned**. To reattach over SSH: `tmux attach -t ned`. The wrapper restarts the server if it
@@ -84,3 +89,9 @@ observation that Phase 0 setup requires.
 - **`claude: command not found`**: same cause; `~/.local/bin` joins PATH at login.
 - **Remote Control session shows offline**: SSH in and run `deploy/ned-remote.sh`; it
   reattaches or restarts. The tmux session survives the app losing track of it.
+- **`Workspace not trusted` in the tmux loop**: the one-time interactive `claude` run above
+  was skipped. Ctrl+C, `tmux kill-session -t ned`, do that step, rerun the wrapper.
+- **The loop sits at a `Choose [1/2]` prompt**: an older wrapper without `--spawn`. Answer
+  `1`, or pull `main` and rerun `deploy/ned-remote.sh`.
+- **`ned-<word>-<word>` sessions appear and vanish**: the account has "Enable Remote Control
+  for all sessions" on, so every interactive `claude` on the Pi registers briefly. Harmless.

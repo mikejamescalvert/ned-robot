@@ -51,9 +51,9 @@ Open decisions that gate Phase 0 setup — settle before installing anything on 
   Pinned 2026-09-08 on hardware day; Mike read the reasoning and did not object. Lyrical Luth
   (Ubuntu 26.04) was rejected because the Create 3 ecosystem is on Jazzy and its firmware is
   the one piece we cannot patch. Change this only with a written reason here.
-- [ ] **Voice stack** — proposed in `docs/decisions/0001-voice-stack.md`: Pipecat, Deepgram
-  Flux STT, Cartesia Sonic TTS, openWakeWord "Hey Ned", wake-word-only with a follow-up
-  window, Claude Opus 5 at low effort. Awaiting Mike's ack.
+- [x] **Voice stack** — accepted 2026-09-08, `docs/decisions/0001-voice-stack.md`: Pipecat,
+  Deepgram Flux STT, Cartesia Sonic TTS, openWakeWord "Hey Ned", wake-word-only with a
+  follow-up window, Claude Opus 5 at low effort.
 - [ ] **API keys on the Pi** — Deepgram, Cartesia, Anthropic, in `/etc/ned/env`. Mike.
 
 ## Next action

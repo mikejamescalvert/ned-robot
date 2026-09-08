@@ -1,6 +1,6 @@
 # 0001 — Voice stack for Phase 0
 
-Status: **proposed 2026-09-08, awaiting Mike's ack.** Researched in a cloud session; nothing
+Status: **accepted 2026-09-08 (Mike).** Researched in a cloud session; nothing
 here has run on the Pi yet. Numbers are vendor-published or third-party (Coval, Hamming,
 Gradium) as of September 2026 and should be re-measured on hardware.
 

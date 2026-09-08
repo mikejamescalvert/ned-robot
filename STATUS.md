@@ -5,8 +5,9 @@ See `PROJECT.md` for the rules.
 
 ## Current phase
 
-**Phase 0 — Desk brain, no wheels.** Hardware arrived 2026-09-08. Bring-up scripts are in
-`deploy/`; the Pi has not been flashed yet. No agent code in the repo yet.
+**Phase 0 — Desk brain, no wheels.** Pi up and audio verified 2026-09-08. Agent scaffold in
+`ned/` (Pipecat pipeline, wake gate, telemetry, 20 tests, CI). Not yet run on the Pi: needs
+the API keys in `/etc/ned/env`, a Cartesia voice id, and the trained `models/hey_ned.onnx`.
 
 ## Hardware on order (Phase 0)
 
@@ -60,9 +61,15 @@ Open decisions that gate Phase 0 setup — settle before installing anything on 
 
 Hardware bring-up is done. The Pi needs nothing more until there is agent code to run.
 
-Mike: ack decision 0001 (or name a swap), then create the three accounts and put the keys in
-`/etc/ned/env`. Cloud, in parallel: scaffold the repo (`ned/` package, `tests/`, CI) and the
-first runnable Pipecat loop; train the "Hey Ned" wake word model.
+Mike, three small things, any order:
+1. Keys in `/etc/ned/env` (Deepgram, Cartesia, Anthropic) plus `CARTESIA_VOICE_ID` from the
+   Cartesia playground.
+2. Train `hey_ned.onnx` per `docs/wakeword.md` (Colab, under an hour), commit it to `models/`.
+3. On the Pi: `git pull`, `uv sync --extra pi`, then `uv run --extra pi ned-agent devices` to
+   confirm the array is listed, then `uv run --extra pi ned-agent run` in tmux and say
+   "Hey Ned". Paste whatever it prints, good or bad, into Ned Brain.
+
+Cloud: nothing blocking. Next code is whatever the first run on hardware reveals.
 
 ## Decisions logged this week (now in PROJECT.md)
 
@@ -90,3 +97,5 @@ first runnable Pipecat loop; train the "Hey Ned" wake word model.
 - 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
   PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
   voice path. Remote Control session named "Ned Brain".
+- 2026-09-08 — Agent scaffold landed: `ned/` package, wake gate, per-turn latency/cost log,
+  tests, CI, `ned-agent.service`, `update.sh`. Verified in the cloud only.

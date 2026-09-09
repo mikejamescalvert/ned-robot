@@ -34,6 +34,15 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["ned"]
 
+[tool.uv]
+# openwakeword 0.6.0 declares tflite-runtime (no Python 3.12 wheels) and speexdsp-ns (no
+# wheels at all for current Pythons). We only use its ONNX path and never enable Speex noise
+# suppression, so drop both at resolution time. A marker that never matches removes the edge.
+override-dependencies = [
+  "tflite-runtime ; sys_platform == 'never'",
+  "speexdsp-ns ; sys_platform == 'never'",
+]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

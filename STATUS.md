@@ -99,3 +99,8 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
   voice path. Remote Control session named "Ned Brain".
 - 2026-09-08 — Agent scaffold landed: `ned/` package, wake gate, per-turn latency/cost log,
   tests, CI, `ned-agent.service`, `update.sh`. Verified in the cloud only.
+- 2026-09-09 — Wake word model trained (Colab Pro, L4, runtime 2026.04, four notebook patches;
+  copied to the Pi). First `uv sync --extra pi` on the Pi failed: openwakeword 0.6.0 pins
+  tflite-runtime (no Python 3.12 wheels). Fixed with uv dependency overrides; the ONNX path
+  verified in the cloud. Next: first run on the Pi.
+

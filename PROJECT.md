@@ -166,6 +166,14 @@ commit, cheaply:
   continuously. It goes to Claude and is discarded unless `remember` stores it. A visible LED
   is on whenever the camera is live. Client calls happen in this office.
 
+## Doors and locks (Mike, 2026-09-09)
+
+Home Assistant owns anything built into the house: smart locks, garage doors, automatic door
+openers. Ned gets `lock` / `unlock` / `open_door` tools that call Home Assistant (its MCP
+server, Phase 4), never hardware on the robot. Unlock is a confirmed action: Ned names the door
+and who asked before acting, and never on a wake word heard through a window. No arm on Ned
+for doors; interior doors on Ned's floor stay open or get an opener.
+
 ## Out of scope
 
 - **Stairs.** A wheeled disc base cannot climb; the cliff sensors exist to keep it away from

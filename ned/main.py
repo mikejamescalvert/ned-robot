@@ -114,6 +114,9 @@ async def run(cfg: Config) -> None:
             enable_usage_metrics=True,
         ),
         processor_unusable_policy=ProcessorUnusablePolicy.END,
+        # Pipecat cancels a pipeline that sees no frames for 5 min. The wake gate drops every
+        # frame while Ned is asleep, so an idle Ned looks dead to it. Ned waits indefinitely.
+        idle_timeout_secs=None,
     )
     runner = WorkerRunner()
     await runner.add_workers(worker)

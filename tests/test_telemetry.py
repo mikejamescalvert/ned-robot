@@ -74,3 +74,13 @@ def test_summarize_medians():
 
 def test_summarize_empty():
     assert summarize([])["turns"] == 0
+
+
+def test_summarize_splits_by_model_only_when_mixed():
+    one = [{"model": "a", "speech_to_first_sound": 100, "cost_usd": 0}]
+    assert "by_model" not in summarize(one)
+    mixed = one + [{"model": "b", "speech_to_first_sound": 300, "cost_usd": 0}]
+    s = summarize(mixed)
+    assert s["speech_to_first_sound_p50_ms"] == 200
+    assert s["by_model"]["a"]["speech_to_first_sound_p50_ms"] == 100
+    assert s["by_model"]["b"]["turns"] == 1

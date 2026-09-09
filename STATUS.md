@@ -37,10 +37,11 @@ array's jack or its AEC has nothing to cancel against.
 
 Against the 1.5 s target we are 0.3 s over on the first try, before any tuning. The
 "first token 1 ms" the same run printed was a telemetry bug (it timed the LLM request being
-sent, not the first token back); fixed the same day, and `stats` now also prints per-service
-TTFB medians so the next run says whether Deepgram end-of-turn, Claude, or Cartesia owns the
-gap. Levers not yet pulled: Flux end-of-turn eagerness, Sonnet 5 for the chat model, shorter
-replies, Cartesia sample rate.
+sent, not the first token back); fixed the same day. The per-service breakdown from the same
+log: Deepgram first byte 75 ms, **Anthropic 1427 ms**, Cartesia 139 ms. Claude owns the whole
+gap, and replies are 19 tokens so it is not thinking time. Decision 0002 moves the default
+chat model to Sonnet 5; the next run measures that. `NED_THINKING=disabled` is the lever
+after it if needed.
 
 **2026-09-09 — First spoken exchange with Ned.** On the Pi, `uv run --extra pi ned-agent run`
 with the trained `hey_ned.onnx` (threshold 0.35, 1 frame). Mike said "Hey Ned" then "what time
@@ -118,6 +119,8 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
 - 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
   PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
   voice path. Remote Control session named "Ned Brain".
+- 2026-09-09 — Breakdown read: Anthropic TTFB 1427 ms is the gap. Decision 0002 proposed: Sonnet 5
+  default chat model, `NED_THINKING` knob, tier by activity later.
 - 2026-09-09 — First latency measurement: 1.79 s p50 to first sound over 18 turns, $0.002/turn.
   Telemetry first-token bug fixed; `stats` gained per-service TTFB breakdown.
 - 2026-09-08 — Agent scaffold landed: `ned/` package, wake gate, per-turn latency/cost log,

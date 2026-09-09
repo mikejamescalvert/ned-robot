@@ -27,7 +27,9 @@ def test_turn_record_latencies_and_cost():
     t.user_stopped()
     clock.t += 0.4
     t.first_token()
-    clock.t += 0.2
+    clock.t += 0.1
+    t.llm_done()
+    clock.t += 0.1
     t.first_tts_audio()
     clock.t += 0.1
     t.bot_started()
@@ -38,6 +40,7 @@ def test_turn_record_latencies_and_cost():
     assert len(out) == 1
     r = out[0]
     assert r["speech_to_first_token"] == 400
+    assert r["speech_to_llm_done"] == 500
     assert r["speech_to_first_tts_audio"] == 600
     assert r["speech_to_first_sound"] == 700
     assert r["tokens"]["cache_read"] == 1000
@@ -56,11 +59,18 @@ def test_events_without_a_turn_are_ignored():
 
 def test_summarize_medians():
     recs = [
-        {"speech_to_first_sound": 900, "cost_usd": 0.01},
-        {"speech_to_first_sound": 1100, "cost_usd": 0.02},
-        {"speech_to_first_sound": None, "cost_usd": 0.0},
+        {"speech_to_first_sound": 900, "cost_usd": 0.01, "ttfb_ms": {"Anthropic": 500}},
+        {"speech_to_first_sound": 1100, "cost_usd": 0.02, "ttfb_ms": {"Anthropic": 700}},
+        {"speech_to_first_sound": None, "cost_usd": 0.0},  # abandoned turn, no ttfb dict
     ]
     s = summarize(recs)
     assert s["turns"] == 3
     assert s["speech_to_first_sound_p50_ms"] == 1000
     assert s["cost_usd"] == 0.03
+    assert s["cost_per_turn_usd"] == 0.01
+    assert s["ttfb_p50_ms"] == {"Anthropic": 600}
+    assert s["completion_tokens_p50"] is None
+
+
+def test_summarize_empty():
+    assert summarize([])["turns"] == 0

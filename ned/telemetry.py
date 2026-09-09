@@ -41,6 +41,7 @@ class Turn:
     started: float
     end_of_speech: float | None = None
     first_token: float | None = None
+    llm_done: float | None = None
     first_tts_audio: float | None = None
     first_sound: float | None = None
     prompt_tokens: int = 0
@@ -53,10 +54,11 @@ class Turn:
 
     def latencies_ms(self) -> dict[str, int | None]:
         def d(a, b):
-            return None if a is None or b is None else int((b - a) * 1000)
+            return None if a is None or b is None else round((b - a) * 1000)
 
         return {
             "speech_to_first_token": d(self.end_of_speech, self.first_token),
+            "speech_to_llm_done": d(self.end_of_speech, self.llm_done),
             "speech_to_first_tts_audio": d(self.end_of_speech, self.first_tts_audio),
             "speech_to_first_sound": d(self.end_of_speech, self.first_sound),
         }
@@ -76,6 +78,10 @@ class TurnTracker:
     def first_token(self):
         if self.turn and self.turn.first_token is None:
             self.turn.first_token = self.clock()
+
+    def llm_done(self):
+        if self.turn and self.turn.llm_done is None:
+            self.turn.llm_done = self.clock()
 
     def first_tts_audio(self):
         if self.turn and self.turn.first_tts_audio is None:
@@ -146,7 +152,8 @@ def build_processor(tracker: TurnTracker):
         BotStartedSpeakingFrame,
         BotStoppedSpeakingFrame,
         Frame,
-        LLMFullResponseStartFrame,
+        LLMFullResponseEndFrame,
+        LLMTextFrame,
         MetricsFrame,
         TTSStartedFrame,
         UserStoppedSpeakingFrame,
@@ -162,8 +169,13 @@ def build_processor(tracker: TurnTracker):
             await super().process_frame(frame, direction)
             if isinstance(frame, UserStoppedSpeakingFrame):
                 tracker.user_stopped()
-            elif isinstance(frame, LLMFullResponseStartFrame):
+            elif isinstance(frame, LLMTextFrame):
+                # Not LLMFullResponseStartFrame: that fires when the request is *sent*, which
+                # read as a 1 ms "first token" on hardware. The first text frame is the first
+                # token actually back from the model.
                 tracker.first_token()
+            elif isinstance(frame, LLMFullResponseEndFrame):
+                tracker.llm_done()
             elif isinstance(frame, TTSStartedFrame):
                 tracker.first_tts_audio()
             elif isinstance(frame, BotStartedSpeakingFrame):
@@ -192,14 +204,36 @@ def build_processor(tracker: TurnTracker):
 
 
 def summarize(records: list[dict]) -> dict:
-    """Roll up turn records: median per latency and total cost (`ned-agent stats`)."""
+    """Roll up turn records for `ned-agent stats`: medians per stage, per-service TTFB, cost.
+
+    The stage medians answer "how far from the 1.5 s target". The TTFB medians say which
+    vendor to blame: each is the time that service waited on its API for the first byte.
+    """
     import statistics
+
+    def p50(vals):
+        return int(statistics.median(vals)) if vals else None
 
     out: dict = {
         "turns": len(records),
         "cost_usd": round(sum(r.get("cost_usd", 0) for r in records), 4),
+        "cost_per_turn_usd": round(sum(r.get("cost_usd", 0) for r in records) / len(records), 4)
+        if records
+        else 0.0,
     }
-    for key in ("speech_to_first_token", "speech_to_first_tts_audio", "speech_to_first_sound"):
-        vals = [r[key] for r in records if r.get(key) is not None]
-        out[f"{key}_p50_ms"] = int(statistics.median(vals)) if vals else None
+    for key in (
+        "speech_to_first_token",
+        "speech_to_llm_done",
+        "speech_to_first_tts_audio",
+        "speech_to_first_sound",
+    ):
+        out[f"{key}_p50_ms"] = p50([r[key] for r in records if r.get(key) is not None])
+    services = sorted({k for r in records for k in (r.get("ttfb_ms") or {})})
+    out["ttfb_p50_ms"] = {
+        svc: p50([r["ttfb_ms"][svc] for r in records if svc in (r.get("ttfb_ms") or {})])
+        for svc in services
+    }
+    out["completion_tokens_p50"] = p50(
+        [r["tokens"]["completion"] for r in records if r.get("tokens")]
+    )
     return out

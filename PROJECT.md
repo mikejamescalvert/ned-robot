@@ -131,6 +131,10 @@ commit, cheaply:
 ## Deploy contract
 
 - `main` is always deployable; nothing merges without CI green.
+- **Auto-merge (Mike, 2026-09-09):** a PR you opened merges itself once CI is green on its
+  head, no "merge" needed. Still say in chat that it merged and what to pull. Exceptions,
+  which wait for an explicit "merge": anything touching `deploy/`, PROJECT.md, a decision
+  record, or a change you flagged as uncertain in the PR body.
 - Pi runs `ned-motion.service` and `ned-agent.service` under systemd.
 - `deploy/update.sh` = git pull → deps sync → colcon build → restart units → hit `/healthz` on
   both → report. Only sanctioned deploy path.

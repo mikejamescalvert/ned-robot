@@ -13,7 +13,7 @@ Gradium) as of September 2026 and should be re-measured on hardware.
 | TTS | **Cartesia Sonic 3.6** | ElevenLabs Flash v2.5 | ~190 ms first audio (Coval P50); explicit `cancel` on a context; raw `pcm_s16le` at 16 kHz so no decode on the Pi; top-ranked voice quality; cheapest at hobby volume. |
 | Wake word | **openWakeWord**, self-trained "Hey Ned" ONNX model | none viable | Picovoice ended its free tier 2026-06-30 (lowest paid tier ~$899/mo). openWakeWord trains from synthetic TTS in a free Colab in under an hour, runs at a few % of one Pi core. |
 | Listening mode | **Wake-word-only, with a follow-up window** | continuous | STT is billed per streamed hour. Continuous ≈ $9/day. Wake-word-only streams only during a conversation, then keeps a short follow-up window (~8 s) so "Hey Ned" is not needed for every turn. Also the privacy answer for an office with client calls. |
-| LLM | **Claude Opus 5** (`claude-opus-5`) at `effort: low`, adaptive thinking | Sonnet 5 for A/B on latency | Per PROJECT.md: low effort, byte-stable system prompt for caching, short spoken line before movement tool calls. |
+| LLM | **Claude Opus 5** (`claude-opus-5`) at `effort: low`, adaptive thinking. *Amended by [0002](0002-chat-model.md): Sonnet 5 default after the first measurement.* | Sonnet 5 for A/B on latency | Per PROJECT.md: low effort, byte-stable system prompt for caching, short spoken line before movement tool calls. |
 
 ## Architecture correction
 

@@ -208,7 +208,19 @@ def summarize(records: list[dict]) -> dict:
 
     The stage medians answer "how far from the 1.5 s target". The TTFB medians say which
     vendor to blame: each is the time that service waited on its API for the first byte.
+    When the log spans more than one chat model (an A/B), the same rollup is repeated per
+    model under ``by_model`` so the runs do not blend.
     """
+    out = _summarize(records)
+    models = sorted({r.get("model") for r in records if r.get("model")})
+    if len(models) > 1:
+        out["by_model"] = {
+            m: _summarize([r for r in records if r.get("model") == m]) for m in models
+        }
+    return out
+
+
+def _summarize(records: list[dict]) -> dict:
     import statistics
 
     def p50(vals):

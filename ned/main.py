@@ -75,7 +75,7 @@ async def run(cfg: Config) -> None:
             system_instruction=cfg.system_prompt(),
             max_tokens=cfg.max_tokens,
             enable_prompt_caching=True,
-            thinking=AnthropicThinkingConfig(type="adaptive"),
+            thinking=AnthropicThinkingConfig(type=cfg.thinking),
             extra={"output_config": {"effort": cfg.effort}},
         ),
     )

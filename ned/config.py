@@ -41,8 +41,9 @@ class Config:
     mute_file: Path = Path("/etc/ned/mute")
 
     # Model
-    model: str = "claude-opus-5"
+    model: str = "claude-sonnet-5"  # docs/decisions/0002-chat-model.md
     effort: str = "low"
+    thinking: str = "adaptive"  # "adaptive" or "disabled"; see decision 0002
     max_tokens: int = 400
     prompt_path: Path = DEFAULT_PROMPT
 
@@ -87,8 +88,9 @@ class Config:
             wake_consecutive_frames=num("NED_WAKE_FRAMES", 2, int),
             follow_up_secs=num("NED_FOLLOW_UP_SECS", 8.0),
             mute_file=Path(e.get("NED_MUTE_FILE", "/etc/ned/mute")),
-            model=e.get("NED_MODEL", "claude-opus-5"),
+            model=e.get("NED_MODEL", "claude-sonnet-5"),
             effort=e.get("NED_EFFORT", "low"),
+            thinking=e.get("NED_THINKING", "adaptive"),
             max_tokens=num("NED_MAX_TOKENS", 400, int),
             prompt_path=Path(e.get("NED_PROMPT", str(DEFAULT_PROMPT))),
             tts_voice=e.get("CARTESIA_VOICE_ID", ""),

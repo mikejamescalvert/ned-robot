@@ -6,7 +6,8 @@ See `PROJECT.md` for the rules.
 ## Current phase
 
 **Phase 0 — Desk brain, no wheels.** The loop runs on hardware as of 2026-09-09 (see below).
-Remaining for the phase gate: measure latency, then the 3-turn conversation from six feet.
+First latency measurement taken 2026-09-09 (below): 1.79 s to first sound, target 1.5 s.
+Remaining for the phase gate: the 3-turn conversation from six feet and the barge-in check.
 
 ## Hardware on order (Phase 0)
 
@@ -26,11 +27,26 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
+**2026-09-09 — First latency numbers.** `ned-agent stats` over 18 turns, one desk session:
+
+| metric | p50 |
+|---|---|
+| end of speech → first TTS audio | 1619 ms |
+| end of speech → first sound from speaker | 1786 ms |
+| cost per turn | $0.0021 |
+
+Against the 1.5 s target we are 0.3 s over on the first try, before any tuning. The
+"first token 1 ms" the same run printed was a telemetry bug (it timed the LLM request being
+sent, not the first token back); fixed the same day, and `stats` now also prints per-service
+TTFB medians so the next run says whether Deepgram end-of-turn, Claude, or Cartesia owns the
+gap. Levers not yet pulled: Flux end-of-turn eagerness, Sonnet 5 for the chat model, shorter
+replies, Cartesia sample rate.
+
 **2026-09-09 — First spoken exchange with Ned.** On the Pi, `uv run --extra pi ned-agent run`
 with the trained `hey_ned.onnx` (threshold 0.35, 1 frame). Mike said "Hey Ned" then "what time
 is it today" from the desk; Ned answered through the array's speaker: "I don't have a clock I
 can check right now so I can't tell you." Wake word → Deepgram Flux → Claude Opus 5 → Cartesia
-→ speaker, end to end, first attempt. Latency numbers not yet read (`ned-agent stats`).
+→ speaker, end to end, first attempt. Latency numbers read later the same day (above).
 
 Earlier: 2026-09-08 — Pi 5 flashed with Ubuntu 24.04, bootstrapped, on Tailscale. `claude
 remote-control --name ned` running in tmux and visible in the Claude app.
@@ -102,6 +118,8 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
 - 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
   PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
   voice path. Remote Control session named "Ned Brain".
+- 2026-09-09 — First latency measurement: 1.79 s p50 to first sound over 18 turns, $0.002/turn.
+  Telemetry first-token bug fixed; `stats` gained per-service TTFB breakdown.
 - 2026-09-08 — Agent scaffold landed: `ned/` package, wake gate, per-turn latency/cost log,
   tests, CI, `ned-agent.service`, `update.sh`. Verified in the cloud only.
 - 2026-09-09 — Wake word model trained (Colab Pro, L4, runtime 2026.04, four notebook patches;

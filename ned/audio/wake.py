@@ -97,7 +97,16 @@ class OpenWakeWordDetector:
 
     def __init__(self, model_path: Path, keyword: str | None = None):
         from openwakeword.model import Model  # local import: pi extra only
+        from openwakeword.utils import download_models
 
+        if not Path(model_path).exists():
+            raise FileNotFoundError(
+                f"wake word model not found at {model_path}; see docs/wakeword.md"
+            )
+        # The package does not ship the shared melspectrogram/embedding models; this fetches
+        # them once into the package directory and is a no-op afterwards. Empty list means
+        # "feature models only", not the stock wake words.
+        download_models(model_names=[])
         self._model = Model(wakeword_models=[str(model_path)], inference_framework="onnx")
         self._keyword = keyword or Path(model_path).stem
         self._buf = np.zeros(0, dtype=np.int16)

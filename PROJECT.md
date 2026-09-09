@@ -94,9 +94,14 @@ found last night reads it there.
   (Creative Pebble V2), USB power from a spare charger, not the Pi. On the robot: a bare
   speaker on the array's JST header and its 5W amp. Playback through the array is 16kHz;
   accept it, revisit in Phase 5.
-- **Camera:** Pi Camera Module 3 on a short mast (~40–60cm) so it sees the desk, not table
-  legs. Plan the faceplate around the mast in Phase 1. Needs the Pi 5 (22-pin) camera cable.
-- **Optional:** RPLIDAR C1 for SLAM, Phase 5. **Network:** Tailscale, no port forwarding.
+- **Camera:** wide-angle camera at the top of a tall mast, **110–130 cm** (Mike, 2026-09-09:
+  Ned photographs the stovetop, the oven window, and pantry shelves, not just the desk). Light
+  carbon tube on the faceplate, heavy parts kept low. Fixed downward tilt first; a tilt servo
+  only if the fixed angle misses something. A CSI ribbon will not run 1.2 m reliably, so the
+  default is a USB wide-angle camera (100°+ FOV) on a USB extension; Pi Camera Module 3 Wide
+  with a CSI-over-HDMI extender is the alternative. Decide in Phase 3, not before.
+- **LiDAR:** RPLIDAR C1 on the faceplate, Phase 3 (was Phase 5). Needed the moment Ned is asked
+  to go somewhere it cannot see from the dock. **Network:** Tailscale, no port forwarding.
 
 ## Architecture (hold this line)
 
@@ -196,14 +201,20 @@ cleanly before docking; decide here, not in Phase 2. Log battery % alongside API
 **2 — First tool loop.** `drive_to`, `turn` as tools. *Done when:* "Hey Ned, come here" across
 the room makes it move and confirm verbally.
 
-**3 — Senses.** Camera + `look`, on the mast, with the LED and the on-demand rule above.
-*Done when:* "what's on my desk?" answered accurately.
+**3 — Senses.** Two halves, in order.
+*3a, eyes:* tall mast, wide camera, LED, `look` tool under the on-demand rule above. *Done
+when:* "what's on the stove?" answered from a photo Ned took at the stove.
+*3b, map:* RPLIDAR C1, slam_toolbox map of the floor, Nav2, named places stored in memory
+(`pantry`, `office`, `dock`), a `go_to(place)` tool with the dock as home. *Done when:* "go to
+the pantry and tell me if we have coffee" completes from the dock, with no one steering.
+Scope note: 3a is a weekend or two; 3b is the first real ROS 2 work and most of it is map
+tuning in doorways. Parts about $200–250 total (mast, camera, cable, lidar).
 
 **4 — Useful.** Calendar/Gmail/Todoist MCP tools. *Done when:* announces a meeting unprompted,
 adds a task by voice.
 
 **5 — Character and polish.** Persistent memory of the office and of Mike, Ned's personality,
-ambient behaviors, optional LiDAR. Shared memory store is decided here; a second body (see
+ambient behaviors. Shared memory store is decided here; a second body (see
 Bodies) is not bought until Phase 2 is signed off on the first one.
 
 ## How to work with him

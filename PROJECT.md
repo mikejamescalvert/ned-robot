@@ -126,6 +126,7 @@ commit, cheaply:
 - Every motion and camera tool takes a `body` argument: an enum of known body IDs, exactly one
   value until a second body exists. Claude picks the body the way it picks the tool.
 - Only the body that heard the wake word speaks. Other bodies execute silently.
+- A remote channel (Telegram, Phase 4) is a caller, not a body. It never speaks aloud.
 - Location is a fact each body reports (floor, room, docked), never a constant in a prompt or
   tool description. No hardcoded "the office".
 - Memory sits behind an interface from day one, even when the first backing store is a file.
@@ -210,8 +211,14 @@ the pantry and tell me if we have coffee" completes from the dock, with no one s
 Scope note: 3a is a weekend or two; 3b is the first real ROS 2 work and most of it is map
 tuning in doorways. Parts about $200–250 total (mast, camera, cable, lidar).
 
-**4 — Useful.** Calendar/Gmail/Todoist MCP tools. *Done when:* announces a meeting unprompted,
-adds a task by voice.
+**4 — Useful.** Calendar/Gmail/Todoist MCP tools, Home Assistant tools (doors and locks
+above), and a **Telegram channel** (Mike, 2026-09-09): a bot on the Pi is a second Pipecat
+transport into the same pipeline, tools and memory, so Ned takes requests from anywhere with
+no VPN. A Telegram request is a *caller*, not a body: the reply goes back to the chat, not the
+speaker, and the sender's Telegram user ID (allow-listed in `/etc/ned/env`) is the identity
+behind confirmed actions like unlock. Photos from `look` go back to the chat too.
+*Done when:* announces a meeting unprompted, adds a task by voice, and "lock the front door"
+from Telegram while Mike is out of the house works end to end.
 
 **5 — Character and polish.** Persistent memory of the office and of Mike, Ned's personality,
 ambient behaviors. Shared memory store is decided here; a second body (see

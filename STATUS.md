@@ -5,9 +5,8 @@ See `PROJECT.md` for the rules.
 
 ## Current phase
 
-**Phase 0 — Desk brain, no wheels.** Pi up and audio verified 2026-09-08. Agent scaffold in
-`ned/` (Pipecat pipeline, wake gate, telemetry, 20 tests, CI). Not yet run on the Pi: needs
-the API keys in `/etc/ned/env`, a Cartesia voice id, and the trained `models/hey_ned.onnx`.
+**Phase 0 — Desk brain, no wheels.** The loop runs on hardware as of 2026-09-09 (see below).
+Remaining for the phase gate: measure latency, then the 3-turn conversation from six feet.
 
 ## Hardware on order (Phase 0)
 
@@ -27,7 +26,13 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
-2026-09-08 — Pi 5 flashed with Ubuntu 24.04, bootstrapped, on Tailscale. `claude
+**2026-09-09 — First spoken exchange with Ned.** On the Pi, `uv run --extra pi ned-agent run`
+with the trained `hey_ned.onnx` (threshold 0.35, 1 frame). Mike said "Hey Ned" then "what time
+is it today" from the desk; Ned answered through the array's speaker: "I don't have a clock I
+can check right now so I can't tell you." Wake word → Deepgram Flux → Claude Opus 5 → Cartesia
+→ speaker, end to end, first attempt. Latency numbers not yet read (`ned-agent stats`).
+
+Earlier: 2026-09-08 — Pi 5 flashed with Ubuntu 24.04, bootstrapped, on Tailscale. `claude
 remote-control --name ned` running in tmux and visible in the Claude app.
 
 `deploy/check-audio.sh` passed. Mike heard himself on playback. Distance not measured; the
@@ -103,4 +108,4 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
   copied to the Pi). First `uv sync --extra pi` on the Pi failed: openwakeword 0.6.0 pins
   tflite-runtime (no Python 3.12 wheels). Fixed with uv dependency overrides; the ONNX path
   verified in the cloud. Next: first run on the Pi.
-
+- 2026-09-09 — First spoken exchange on the Pi. Phase 0 loop works end to end.

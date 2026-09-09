@@ -95,9 +95,11 @@ async def run(cfg: Config) -> None:
             wake.build_processor(gate),
             stt,
             user_agg,
-            telemetry.build_processor(tracker),
             llm,
             tts,
+            # After tts so it sees LLM/TTS timing and usage frames flowing down, and the
+            # transport's bot-speaking frames flowing back up.
+            telemetry.build_processor(tracker),
             transport.output(),
             assistant_agg,
         ]

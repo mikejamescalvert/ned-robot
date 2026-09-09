@@ -6,9 +6,13 @@ from ned.audio.wake import WakeGate
 class FakeDetector:
     def __init__(self, scores):
         self.scores = list(scores)
+        self.resets = 0
 
     def score(self, pcm16: bytes) -> float:
         return self.scores.pop(0) if self.scores else 0.0
+
+    def reset(self) -> None:
+        self.resets += 1
 
 
 class Clock:
@@ -82,3 +86,19 @@ def test_callbacks_fire():
     clock.t = 5
     gate.feed(b"x")
     assert events == ["wake", "sleep"]
+
+
+def test_sleep_resets_detector_and_refractory_blocks_immediate_rewake():
+    # The bug seen on the Pi: after sleeping, the phrase still in the detector's buffer
+    # scored high on the next frame and woke it again, every follow-up window.
+    gate, clock = make(
+        [0.9, 0.9, 0.9, 0.9, 0.9], consecutive_frames=1, follow_up_secs=8, refractory_secs=1.0
+    )
+    assert gate.feed(b"x") is True
+    assert gate.detector.resets == 1  # reset on wake
+    clock.t = 9
+    assert gate.feed(b"x") is False  # follow-up expired: sleep
+    assert gate.detector.resets == 2  # reset on sleep
+    assert gate.feed(b"x") is False  # still inside refractory: high score ignored
+    clock.t = 10.5
+    assert gate.feed(b"x") is True  # refractory over: a real detection wakes it again

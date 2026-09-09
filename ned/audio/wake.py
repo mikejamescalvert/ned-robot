@@ -26,6 +26,10 @@ class Detector(Protocol):
 
     def score(self, pcm16: bytes) -> float: ...
 
+    def reset(self) -> None:
+        """Forget buffered audio and scores. Called on every wake and sleep transition."""
+        ...
+
 
 @dataclass
 class WakeGate:
@@ -33,12 +37,14 @@ class WakeGate:
     threshold: float = 0.5
     consecutive_frames: int = 2
     follow_up_secs: float = 8.0
+    refractory_secs: float = 1.0  # after sleeping, ignore detections this long
     mute_file: Path | None = None
     clock: Callable[[], float] = time.monotonic
 
     awake: bool = False
     _hits: int = 0
     _last_activity: float = 0.0
+    _slept_at: float = -1e9
     _busy: bool = False  # user or bot currently speaking
     on_wake: list[Callable[[], None]] = field(default_factory=list)
     on_sleep: list[Callable[[], None]] = field(default_factory=list)
@@ -57,7 +63,11 @@ class WakeGate:
                 self._sleep()
                 return False
             return True
-        if self.detector.score(pcm16) >= self.threshold:
+        score = self.detector.score(pcm16)
+        if self.clock() - self._slept_at < self.refractory_secs:
+            self._hits = 0  # detector still warming up on fresh audio; ignore
+            return False
+        if score >= self.threshold:
             self._hits += 1
             if self._hits >= self.consecutive_frames:
                 self._wake()
@@ -75,6 +85,7 @@ class WakeGate:
         self.awake = True
         self._hits = 0
         self._last_activity = self.clock()
+        self._reset_detector()
         for cb in self.on_wake:
             cb()
 
@@ -82,8 +93,15 @@ class WakeGate:
         self.awake = False
         self._hits = 0
         self._busy = False
+        self._slept_at = self.clock()
+        self._reset_detector()  # or the phrase that woke us is still in its buffer
         for cb in self.on_sleep:
             cb()
+
+    def _reset_detector(self) -> None:
+        reset = getattr(self.detector, "reset", None)
+        if callable(reset):
+            reset()
 
 
 class OpenWakeWordDetector:
@@ -109,6 +127,11 @@ class OpenWakeWordDetector:
         download_models(model_names=[])
         self._model = Model(wakeword_models=[str(model_path)], inference_framework="onnx")
         self._keyword = keyword or Path(model_path).stem
+        self._buf = np.zeros(0, dtype=np.int16)
+        self._last = 0.0
+
+    def reset(self) -> None:
+        self._model.reset()
         self._buf = np.zeros(0, dtype=np.int16)
         self._last = 0.0
 

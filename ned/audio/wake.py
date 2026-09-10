@@ -42,6 +42,7 @@ class WakeGate:
     clock: Callable[[], float] = time.monotonic
 
     awake: bool = False
+    last_score: float = 0.0  # most recent detector score; logged on wake for tuning
     _hits: int = 0
     _last_activity: float = 0.0
     _slept_at: float = -1e9
@@ -64,6 +65,7 @@ class WakeGate:
                 return False
             return True
         score = self.detector.score(pcm16)
+        self.last_score = score
         if self.clock() - self._slept_at < self.refractory_secs:
             self._hits = 0  # detector still warming up on fresh audio; ignore
             return False
@@ -113,7 +115,23 @@ class OpenWakeWordDetector:
 
     FRAME_SAMPLES = 1280
 
-    def __init__(self, model_path: Path, keyword: str | None = None):
+    def __init__(
+        self,
+        model_path: Path,
+        keyword: str | None = None,
+        vad_threshold: float = 0.0,
+        verifier_path: Path | None = None,
+        verifier_threshold: float = 0.1,
+    ):
+        """
+        vad_threshold: > 0 runs Silero VAD alongside the wake model and zeroes the score when
+            nobody is speaking. Cheap, and it removes most false wakes from fans, chairs, and
+            the robot's own noises.
+        verifier_path: a personal verifier trained on Mike's own "hey ned" clips
+            (``ned-agent train-verifier``). When the base model scores above
+            ``verifier_threshold`` the verifier's opinion replaces the score, so other voices
+            and near-miss phrases stop waking it. Skipped if the file does not exist.
+        """
         from openwakeword.model import Model  # local import: pi extra only
         from openwakeword.utils import download_models
 
@@ -122,11 +140,22 @@ class OpenWakeWordDetector:
                 f"wake word model not found at {model_path}; see docs/wakeword.md"
             )
         # The package does not ship the shared melspectrogram/embedding models; this fetches
-        # them once into the package directory and is a no-op afterwards. Empty list means
-        # "feature models only", not the stock wake words.
-        download_models(model_names=[])
-        self._model = Model(wakeword_models=[str(model_path)], inference_framework="onnx")
+        # them once into the package directory and is a no-op afterwards. An empty list would
+        # pull every stock wake word too; hey_jarvis is bundled, so naming it fetches nothing
+        # beyond the feature models.
+        download_models(model_names=["hey_jarvis_v0.1"])
         self._keyword = keyword or Path(model_path).stem
+        verifiers = {}
+        if verifier_path and Path(verifier_path).exists():
+            verifiers[self._keyword] = str(verifier_path)
+        self._model = Model(
+            wakeword_models=[str(model_path)],
+            inference_framework="onnx",
+            vad_threshold=vad_threshold,
+            custom_verifier_models=verifiers,
+            custom_verifier_threshold=verifier_threshold,
+        )
+        self.verifier_active = bool(verifiers)
         self._buf = np.zeros(0, dtype=np.int16)
         self._last = 0.0
 
@@ -163,7 +192,7 @@ def build_processor(gate: WakeGate):
     class WakeGateProcessor(FrameProcessor):
         def __init__(self):
             super().__init__(name="WakeGate")
-            gate.on_wake.append(lambda: logger.info("wake: Hey Ned"))
+            gate.on_wake.append(lambda: logger.info(f"wake: Hey Ned (score {gate.last_score:.2f})"))
             gate.on_sleep.append(lambda: logger.info("wake: back to sleep"))
 
         async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -179,3 +208,28 @@ def build_processor(gate: WakeGate):
             await self.push_frame(frame, direction)
 
     return WakeGateProcessor()
+
+
+def score_meter(
+    detector: Detector,
+    chunks,
+    threshold: float,
+    frames_per_line: int = 12,
+    out=print,
+) -> None:
+    """Print one line per ~second: the max wake score in that second, as a bar.
+
+    Pure over an iterable of pcm16 chunks so it is unit tested; ``ned-agent wakescore`` feeds
+    it the microphone. Lets Mike see what silence, typing, and a real "hey ned" score before
+    touching NED_WAKE_THRESHOLD, without any cloud calls.
+    """
+    peak = 0.0
+    n = 0
+    for chunk in chunks:
+        peak = max(peak, detector.score(chunk))
+        n += 1
+        if n >= frames_per_line:
+            bar = "#" * int(peak * 40)
+            flag = "  WAKE" if peak >= threshold else ""
+            out(f"{peak:5.2f} |{bar:<40}|{flag}")
+            peak, n = 0.0, 0

@@ -17,6 +17,10 @@ def test_from_env_reads_required_and_defaults():
     assert cfg.thinking == "adaptive"
     assert cfg.sample_rate_in == 16000
     assert cfg.audio_device_match == "Array"
+    assert cfg.wake_threshold == 0.5
+    assert cfg.wake_consecutive_frames == 2
+    assert cfg.wake_vad_threshold == 0.5
+    assert cfg.wake_verifier_path.name == "hey_ned_verifier.pkl"
 
 
 def test_missing_secret_is_an_error():

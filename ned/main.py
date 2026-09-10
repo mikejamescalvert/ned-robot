@@ -52,8 +52,18 @@ async def run(cfg: Config) -> None:
         )
     )
 
+    detector = wake.OpenWakeWordDetector(
+        cfg.wake_model_path,
+        vad_threshold=cfg.wake_vad_threshold,
+        verifier_path=cfg.wake_verifier_path,
+        verifier_threshold=cfg.wake_verifier_threshold,
+    )
+    logger.info(
+        f"wake: threshold {cfg.wake_threshold}, frames {cfg.wake_consecutive_frames}, "
+        f"vad {cfg.wake_vad_threshold}, verifier {'on' if detector.verifier_active else 'off'}"
+    )
     gate = wake.WakeGate(
-        detector=wake.OpenWakeWordDetector(cfg.wake_model_path),
+        detector=detector,
         threshold=cfg.wake_threshold,
         consecutive_frames=cfg.wake_consecutive_frames,
         follow_up_secs=cfg.follow_up_secs,
@@ -127,6 +137,112 @@ async def run(cfg: Config) -> None:
     await runner.run()
 
 
+def _mic_chunks(cfg: Config, seconds: float | None):
+    """Yield 80 ms pcm16 chunks from the array mic. Pi only (PyAudio)."""
+    import pyaudio
+
+    devices = list_pyaudio_devices()
+    idx = pick_device(devices, cfg.audio_device_match)
+    if idx is None:
+        raise ConfigError(f"no audio device matching {cfg.audio_device_match!r}; saw {devices}")
+    pa = pyaudio.PyAudio()
+    frames = wake.OpenWakeWordDetector.FRAME_SAMPLES
+    stream = pa.open(
+        format=pyaudio.paInt16,
+        channels=1,
+        rate=cfg.sample_rate_in,
+        input=True,
+        input_device_index=idx,
+        frames_per_buffer=frames,
+    )
+    total = None if seconds is None else int(seconds * cfg.sample_rate_in / frames)
+    try:
+        n = 0
+        while total is None or n < total:
+            yield stream.read(frames, exception_on_overflow=False)
+            n += 1
+    finally:
+        stream.stop_stream()
+        stream.close()
+        pa.terminate()
+
+
+def wakescore(cfg: Config) -> int:
+    """Live wake-score meter. Say nothing, type, cough, then say "hey ned". Ctrl+C to stop."""
+    detector = wake.OpenWakeWordDetector(
+        cfg.wake_model_path,
+        vad_threshold=cfg.wake_vad_threshold,
+        verifier_path=cfg.wake_verifier_path,
+        verifier_threshold=cfg.wake_verifier_threshold,
+    )
+    print(
+        f"threshold {cfg.wake_threshold}  vad {cfg.wake_vad_threshold}  "
+        f"verifier {'on' if detector.verifier_active else 'off'}   (Ctrl+C to stop)"
+    )
+    try:
+        wake.score_meter(detector, _mic_chunks(cfg, None), cfg.wake_threshold)
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
+def record_clips(cfg: Config, kind: str, count: int, seconds: float = 2.0) -> int:
+    """Record short WAV clips for the personal verifier into ~/ned-wake/<kind>/."""
+    import time
+    import wave
+
+    out_dir = Path.home() / "ned-wake" / kind
+    out_dir.mkdir(parents=True, exist_ok=True)
+    prompt = (
+        'say "hey ned", naturally, once'
+        if kind == "positive"
+        else "say anything that is NOT the wake word (a sentence, a name, a cough)"
+    )
+    for i in range(count):
+        n = len(list(out_dir.glob("*.wav"))) + 1
+        path = out_dir / f"{n:02d}.wav"
+        print(f"[{i + 1}/{count}] in 1 second, {prompt}")
+        time.sleep(1.0)
+        print("   recording...")
+        data = b"".join(_mic_chunks(cfg, seconds))
+        with wave.open(str(path), "wb") as w:
+            w.setnchannels(1)
+            w.setsampwidth(2)
+            w.setframerate(cfg.sample_rate_in)
+            w.writeframes(data)
+        print(f"   saved {path}")
+        time.sleep(0.5)
+    return 0
+
+
+def train_verifier(cfg: Config) -> int:
+    """Train the personal verifier from ~/ned-wake/{positive,negative}/*.wav."""
+    from openwakeword.custom_verifier_model import train_custom_verifier
+    from openwakeword.utils import download_models
+
+    base = Path.home() / "ned-wake"
+    pos = sorted(str(p) for p in (base / "positive").glob("*.wav"))
+    neg = sorted(str(p) for p in (base / "negative").glob("*.wav"))
+    if len(pos) < 5 or len(neg) < 5:
+        logger.error(
+            f"need at least 5 positive and 5 negative clips, have {len(pos)}/{len(neg)}; "
+            "run `ned-agent record positive 10` and `ned-agent record negative 10`"
+        )
+        return 1
+    download_models(model_names=["hey_jarvis_v0.1"])  # feature models only, see wake.py
+    out = cfg.wake_verifier_path
+    out.parent.mkdir(parents=True, exist_ok=True)
+    train_custom_verifier(pos, neg, str(out), str(cfg.wake_model_path), inference_framework="onnx")
+    logger.info(f"verifier written to {out}; it is picked up automatically on the next run")
+    return 0
+
+
+USAGE = (
+    "usage: ned-agent [run | devices | stats [turns.jsonl] | wakescore | "
+    "record positive|negative [count] | train-verifier]"
+)
+
+
 def cli(argv: list[str] | None = None) -> int:
     argv = sys.argv[1:] if argv is None else argv
     logger.remove()
@@ -141,11 +257,21 @@ def cli(argv: list[str] | None = None) -> int:
         for i, name in list_pyaudio_devices():
             print(f"{i:3d}  {name}")
         return 0
-    if cmd != "run":
-        print("usage: ned-agent [run|devices|stats [turns.jsonl]]", file=sys.stderr)
+    if cmd not in ("run", "wakescore", "record", "train-verifier"):
+        print(USAGE, file=sys.stderr)
         return 2
     try:
         cfg = Config.from_env()
+        if cmd == "wakescore":
+            return wakescore(cfg)
+        if cmd == "record":
+            kind = argv[1] if len(argv) > 1 else ""
+            if kind not in ("positive", "negative"):
+                print(USAGE, file=sys.stderr)
+                return 2
+            return record_clips(cfg, kind, int(argv[2]) if len(argv) > 2 else 10)
+        if cmd == "train-verifier":
+            return train_verifier(cfg)
     except ConfigError as e:
         logger.error(str(e))
         return 1

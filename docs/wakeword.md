@@ -33,3 +33,42 @@ Tuning knobs on the Pi (in `/etc/ned/env`): `NED_WAKE_THRESHOLD` (0.5 default; r
 0.7 if it false-wakes during calls) and `NED_WAKE_FRAMES` (consecutive 80 ms frames above the
 threshold; 2 default). The mute file `/etc/ned/mute` disables listening entirely:
 `touch /etc/ned/mute` before a client call, `rm` it after.
+
+## False wakes (Ned waking when nobody said "hey ned")
+
+Three levers, cheapest first. Each one is independent; stop when it is quiet.
+
+1. **Tighten the gate.** The first hardware day loosened `NED_WAKE_THRESHOLD` to 0.35 and
+   `NED_WAKE_FRAMES` to 1 because the synthetic model was weak. Put them back to `0.5` and
+   `2` in `/etc/ned/env`. Watch what a real "hey ned" scores first so you do not overshoot:
+
+   ```
+   uv run --extra pi ned-agent wakescore
+   ```
+
+   One line per second, peak score as a bar, `WAKE` when it would have fired. Sit quietly,
+   type, move the chair, then say "hey ned" from the desk and from six feet. The threshold
+   goes just under your real scores and above everything else.
+
+2. **Speech gate.** `NED_WAKE_VAD` (default 0.5) runs Silero VAD next to the wake model and
+   zeroes the score when nobody is speaking. On by default; set `0` to turn it off.
+
+3. **Personal verifier.** A second, tiny model trained on your own voice that gets the final
+   say whenever the base model fires. Ten minutes, on the Pi, no cloud:
+
+   ```
+   uv run --extra pi ned-agent record positive 10     # say "hey ned" ten times
+   uv run --extra pi ned-agent record negative 10     # say ten other things
+   uv run --extra pi ned-agent train-verifier
+   ```
+
+   Writes `models/hey_ned_verifier.pkl` next to the wake model; the next `ned-agent run`
+   picks it up (the start-up log says `verifier on`). Commit it from Ned Brain. Vary the
+   positives: normal, quiet, across the room, mid-sentence. Negatives should include
+   near-misses like "hey Ted", "Ned", and whatever you say most at the desk.
+
+Every wake is logged with its score (`wake: Hey Ned (score 0.71)`), so a false wake in the
+log tells you how far to move the threshold.
+
+If all three are not enough, the base model itself needs real recordings: the Colab notebook
+accepts your positive clips alongside the synthetic ones. That is a retrain, not a tweak.

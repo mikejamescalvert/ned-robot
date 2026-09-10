@@ -67,6 +67,9 @@ class Config:
     wake_model_path: Path = DEFAULT_WAKE_MODEL
     wake_threshold: float = 0.5
     wake_consecutive_frames: int = 2
+    wake_vad_threshold: float = 0.5  # 0 disables the speech gate
+    wake_verifier_path: Path = DEFAULT_WAKE_MODEL.with_name("hey_ned_verifier.pkl")
+    wake_verifier_threshold: float = 0.1
     follow_up_secs: float = 8.0
     mute_file: Path = Path("/etc/ned/mute")
 
@@ -121,6 +124,13 @@ class Config:
             wake_model_path=Path(e.get("NED_WAKE_MODEL", str(DEFAULT_WAKE_MODEL))),
             wake_threshold=num("NED_WAKE_THRESHOLD", 0.5),
             wake_consecutive_frames=num("NED_WAKE_FRAMES", 2, int),
+            wake_vad_threshold=num("NED_WAKE_VAD", 0.5),
+            wake_verifier_path=Path(
+                e.get(
+                    "NED_WAKE_VERIFIER", str(DEFAULT_WAKE_MODEL.with_name("hey_ned_verifier.pkl"))
+                )
+            ),
+            wake_verifier_threshold=num("NED_WAKE_VERIFIER_THRESHOLD", 0.1),
             follow_up_secs=num("NED_FOLLOW_UP_SECS", 8.0),
             mute_file=Path(e.get("NED_MUTE_FILE", "/etc/ned/mute")),
             model=e.get("NED_MODEL", "claude-sonnet-5"),

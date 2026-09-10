@@ -3,6 +3,7 @@ import pytest
 from ned.audio.devices import pick_device
 from ned.memory import InMemory
 from ned.tools import body_property, tool_schema
+from ned.tools.clock import SCHEMA, now_facts
 
 
 def test_pick_device_by_name_case_insensitive():
@@ -39,3 +40,22 @@ def test_memory_dedupes_and_recalls_latest():
     m.remember("  coffee at 9 ")
     assert m.recall() == ["desk is by the window", "coffee at 9"]
     assert m.recall(limit=1) == ["coffee at 9"]
+
+
+def test_clock_facts_are_spoken_friendly():
+    from datetime import datetime, timedelta, timezone
+
+    tz = timezone(timedelta(hours=-4), "EDT")
+    f = now_facts(datetime(2026, 9, 10, 0, 5, tzinfo=tz))
+    assert f["time"] == "12:05 AM"
+    assert f["weekday"] == "Thursday"
+    assert f["date"] == "September 10, 2026"
+    assert f["timezone"] == "EDT"
+    f = now_facts(datetime(2026, 9, 10, 13, 30, tzinfo=tz))
+    assert f["time"] == "1:30 PM"
+
+
+def test_clock_schema_takes_no_arguments():
+    assert SCHEMA["name"] == "get_time"
+    assert SCHEMA["input_schema"]["properties"] == {}
+    assert SCHEMA["input_schema"]["required"] == []

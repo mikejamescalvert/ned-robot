@@ -17,6 +17,7 @@ from ned import telemetry
 from ned.audio import wake
 from ned.audio.devices import list_pyaudio_devices, pick_device
 from ned.config import Config, ConfigError
+from ned.tools import clock
 
 
 async def run(cfg: Config) -> None:
@@ -80,7 +81,9 @@ async def run(cfg: Config) -> None:
         ),
     )
 
-    context = LLMContext()
+    # Tools advertised here are registered on the LLM service automatically (handler on the
+    # schema). Keep the list byte-stable across turns: it is part of the cached prefix.
+    context = LLMContext(tools=[clock.function_schema()])
     user_agg, assistant_agg = LLMContextAggregatorPair(
         context,
         # Flux supplies end-of-turn; Silero VAD is here for barge-in only.

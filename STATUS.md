@@ -119,6 +119,9 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
 - 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
   PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
   voice path. Remote Control session named "Ned Brain".
+- 2026-09-09 — Design: Telegram bot as a second transport in Phase 4 (caller, not a body).
+- 2026-09-09 — Design: doors and locks go through Home Assistant tools, not robot hardware.
+  Create 3 stays the base; taller mast + earlier lidar proposed, not yet written in.
 - 2026-09-09 — Breakdown read: Anthropic TTFB 1427 ms is the gap. Decision 0002 proposed: Sonnet 5
   default chat model, `NED_THINKING` knob, tier by activity later.
 - 2026-09-09 — First latency measurement: 1.79 s p50 to first sound over 18 turns, $0.002/turn.

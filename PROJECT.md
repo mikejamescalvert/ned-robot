@@ -94,9 +94,14 @@ found last night reads it there.
   (Creative Pebble V2), USB power from a spare charger, not the Pi. On the robot: a bare
   speaker on the array's JST header and its 5W amp. Playback through the array is 16kHz;
   accept it, revisit in Phase 5.
-- **Camera:** Pi Camera Module 3 on a short mast (~40–60cm) so it sees the desk, not table
-  legs. Plan the faceplate around the mast in Phase 1. Needs the Pi 5 (22-pin) camera cable.
-- **Optional:** RPLIDAR C1 for SLAM, Phase 5. **Network:** Tailscale, no port forwarding.
+- **Camera:** wide-angle camera at the top of a tall mast, **110–130 cm** (Mike, 2026-09-09:
+  Ned photographs the stovetop, the oven window, and pantry shelves, not just the desk). Light
+  carbon tube on the faceplate, heavy parts kept low. Fixed downward tilt first; a tilt servo
+  only if the fixed angle misses something. A CSI ribbon will not run 1.2 m reliably, so the
+  default is a USB wide-angle camera (100°+ FOV) on a USB extension; Pi Camera Module 3 Wide
+  with a CSI-over-HDMI extender is the alternative. Decide in Phase 3, not before.
+- **LiDAR:** RPLIDAR C1 on the faceplate, Phase 3 (was Phase 5). Needed the moment Ned is asked
+  to go somewhere it cannot see from the dock. **Network:** Tailscale, no port forwarding.
 
 ## Architecture (hold this line)
 
@@ -121,6 +126,7 @@ commit, cheaply:
 - Every motion and camera tool takes a `body` argument: an enum of known body IDs, exactly one
   value until a second body exists. Claude picks the body the way it picks the tool.
 - Only the body that heard the wake word speaks. Other bodies execute silently.
+- A remote channel (Telegram, Phase 4) is a caller, not a body. It never speaks aloud.
 - Location is a fact each body reports (floor, room, docked), never a constant in a prompt or
   tool description. No hardcoded "the office".
 - Memory sits behind an interface from day one, even when the first backing store is a file.
@@ -166,6 +172,14 @@ commit, cheaply:
   continuously. It goes to Claude and is discarded unless `remember` stores it. A visible LED
   is on whenever the camera is live. Client calls happen in this office.
 
+## Doors and locks (Mike, 2026-09-09)
+
+Home Assistant owns anything built into the house: smart locks, garage doors, automatic door
+openers. Ned gets `lock` / `unlock` / `open_door` tools that call Home Assistant (its MCP
+server, Phase 4), never hardware on the robot. Unlock is a confirmed action: Ned names the door
+and who asked before acting, and never on a wake word heard through a window. No arm on Ned
+for doors; interior doors on Ned's floor stay open or get an opener.
+
 ## Out of scope
 
 - **Stairs.** A wheeled disc base cannot climb; the cliff sensors exist to keep it away from
@@ -188,14 +202,26 @@ cleanly before docking; decide here, not in Phase 2. Log battery % alongside API
 **2 — First tool loop.** `drive_to`, `turn` as tools. *Done when:* "Hey Ned, come here" across
 the room makes it move and confirm verbally.
 
-**3 — Senses.** Camera + `look`, on the mast, with the LED and the on-demand rule above.
-*Done when:* "what's on my desk?" answered accurately.
+**3 — Senses.** Two halves, in order.
+*3a, eyes:* tall mast, wide camera, LED, `look` tool under the on-demand rule above. *Done
+when:* "what's on the stove?" answered from a photo Ned took at the stove.
+*3b, map:* RPLIDAR C1, slam_toolbox map of the floor, Nav2, named places stored in memory
+(`pantry`, `office`, `dock`), a `go_to(place)` tool with the dock as home. *Done when:* "go to
+the pantry and tell me if we have coffee" completes from the dock, with no one steering.
+Scope note: 3a is a weekend or two; 3b is the first real ROS 2 work and most of it is map
+tuning in doorways. Parts about $200–250 total (mast, camera, cable, lidar).
 
-**4 — Useful.** Calendar/Gmail/Todoist MCP tools. *Done when:* announces a meeting unprompted,
-adds a task by voice.
+**4 — Useful.** Calendar/Gmail/Todoist MCP tools, Home Assistant tools (doors and locks
+above), and a **Telegram channel** (Mike, 2026-09-09): a bot on the Pi is a second Pipecat
+transport into the same pipeline, tools and memory, so Ned takes requests from anywhere with
+no VPN. A Telegram request is a *caller*, not a body: the reply goes back to the chat, not the
+speaker, and the sender's Telegram user ID (allow-listed in `/etc/ned/env`) is the identity
+behind confirmed actions like unlock. Photos from `look` go back to the chat too.
+*Done when:* announces a meeting unprompted, adds a task by voice, and "lock the front door"
+from Telegram while Mike is out of the house works end to end.
 
 **5 — Character and polish.** Persistent memory of the office and of Mike, Ned's personality,
-ambient behaviors, optional LiDAR. Shared memory store is decided here; a second body (see
+ambient behaviors. Shared memory store is decided here; a second body (see
 Bodies) is not bought until Phase 2 is signed off on the first one.
 
 ## How to work with him

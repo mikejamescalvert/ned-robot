@@ -1,7 +1,9 @@
 """Configuration for the agent, read from the environment.
 
 On the Pi, systemd loads /etc/ned/env before starting the service, so everything here is a
-plain environment variable. In tests, construct Config directly. Secrets never have defaults.
+plain environment variable. A hand-run ``ned-agent`` reads the same file for anything the
+shell did not set, so a fresh SSH session works without sourcing it. In tests, construct
+Config directly. Secrets never have defaults.
 """
 
 from __future__ import annotations
@@ -12,6 +14,34 @@ from pathlib import Path
 
 DEFAULT_PROMPT = Path(__file__).resolve().parent.parent / "prompts" / "ned-v0.md"
 DEFAULT_WAKE_MODEL = Path(__file__).resolve().parent.parent / "models" / "hey_ned.onnx"
+
+
+DEFAULT_ENV_FILE = "/etc/ned/env"
+
+
+def read_env_file(path: Path) -> dict[str, str]:
+    """Parse a systemd-style EnvironmentFile: KEY=VALUE lines, # comments, optional quotes.
+
+    Missing or unreadable file means an empty dict; the caller's own error for a missing
+    secret is clearer than a stack trace from here.
+    """
+    out: dict[str, str] = {}
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return out
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :]
+        k, v = line.split("=", 1)
+        v = v.strip()
+        if len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+            v = v[1:-1]
+        out[k.strip()] = v
+    return out
 
 
 class ConfigError(RuntimeError):
@@ -59,6 +89,11 @@ class Config:
     @classmethod
     def from_env(cls, env: dict[str, str] | None = None) -> Config:
         e = dict(os.environ if env is None else env)
+        if env is None:
+            # A hand-run `ned-agent run` in a fresh SSH shell has not sourced the env file
+            # that systemd loads. Fill in only what the shell did not already provide.
+            for k, v in read_env_file(Path(e.get("NED_ENV_FILE", DEFAULT_ENV_FILE))).items():
+                e.setdefault(k, v)
 
         def req(name: str) -> str:
             v = e.get(name, "").strip()

@@ -1,6 +1,6 @@
 import pytest
 
-from ned.config import Config, ConfigError
+from ned.config import Config, ConfigError, read_env_file
 
 GOOD = {
     "ANTHROPIC_API_KEY": "a",
@@ -54,3 +54,38 @@ def test_system_prompt_is_stable_and_names_the_body():
     assert a == b, "system prompt must be byte-stable for prompt caching"
     assert "office" in a
     assert "{{body}}" not in a
+
+
+def test_read_env_file_parses_systemd_style(tmp_path):
+    f = tmp_path / "env"
+    f.write_text(
+        "# comment\n"
+        "NED_BODY=office\n"
+        'ANTHROPIC_API_KEY="quoted value"\n'
+        "export CARTESIA_API_KEY='single'\n"
+        "\n"
+        "NOT_A_PAIR\n"
+        "NED_WAKE_THRESHOLD = 0.35\n"
+    )
+    assert read_env_file(f) == {
+        "NED_BODY": "office",
+        "ANTHROPIC_API_KEY": "quoted value",
+        "CARTESIA_API_KEY": "single",
+        "NED_WAKE_THRESHOLD": "0.35",
+    }
+
+
+def test_read_env_file_missing_is_empty(tmp_path):
+    assert read_env_file(tmp_path / "nope") == {}
+
+
+def test_from_env_falls_back_to_env_file(tmp_path, monkeypatch):
+    f = tmp_path / "env"
+    f.write_text("ANTHROPIC_API_KEY=a\nDEEPGRAM_API_KEY=d\nCARTESIA_API_KEY=c\nNED_BODY=file\n")
+    for k in ("ANTHROPIC_API_KEY", "DEEPGRAM_API_KEY", "CARTESIA_API_KEY"):
+        monkeypatch.delenv(k, raising=False)
+    monkeypatch.setenv("NED_ENV_FILE", str(f))
+    monkeypatch.setenv("NED_BODY", "shell")  # the shell wins over the file
+    cfg = Config.from_env()
+    assert cfg.anthropic_api_key == "a"
+    assert cfg.body == "shell"

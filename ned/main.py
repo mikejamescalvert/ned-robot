@@ -105,7 +105,7 @@ async def run(cfg: Config) -> None:
     pipeline = Pipeline(
         [
             transport.input(),
-            wake.build_processor(gate),
+            wake.build_processor(gate, cfg.sample_rate_out if cfg.wake_chime else 0),
             stt,
             user_agg,
             llm,

@@ -173,10 +173,15 @@ class OpenWakeWordDetector:
         return self._last
 
 
-def build_processor(gate: WakeGate):
+def build_processor(gate: WakeGate, chime_sample_rate: int = 0):
     """Return a Pipecat FrameProcessor that applies ``gate`` to input audio.
 
     Built lazily so the pure state machine above stays importable without Pipecat.
+
+    ``chime_sample_rate`` > 0 plays a short rising tone the moment the gate opens and a
+    falling one when it closes, so nobody has to guess whether Ned heard them. The audio is
+    pushed downstream as an output frame; it reaches the transport without touching STT,
+    which only sees frames the gate passes.
     """
     from loguru import logger
     from pipecat.frames.frames import (
@@ -184,21 +189,46 @@ def build_processor(gate: WakeGate):
         BotStoppedSpeakingFrame,
         Frame,
         InputAudioRawFrame,
+        OutputAudioRawFrame,
         UserStartedSpeakingFrame,
         UserStoppedSpeakingFrame,
     )
     from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 
+    from ned.audio.chime import SLEEP_TONES, WAKE_TONES, chime
+
+    wake_pcm = chime(WAKE_TONES, chime_sample_rate) if chime_sample_rate else b""
+    sleep_pcm = chime(SLEEP_TONES, chime_sample_rate) if chime_sample_rate else b""
+
     class WakeGateProcessor(FrameProcessor):
         def __init__(self):
             super().__init__(name="WakeGate")
+            self._play: bytes | None = None
             gate.on_wake.append(lambda: logger.info(f"wake: Hey Ned (score {gate.last_score:.2f})"))
             gate.on_sleep.append(lambda: logger.info("wake: back to sleep"))
+            if chime_sample_rate:
+                gate.on_wake.append(lambda: self._queue(wake_pcm))
+                gate.on_sleep.append(lambda: self._queue(sleep_pcm))
+
+        def _queue(self, pcm: bytes) -> None:
+            # The callback runs inside gate.feed(); the frame is pushed from process_frame,
+            # which is the only place with an await.
+            self._play = pcm
+
+        async def _flush_chime(self, direction: FrameDirection) -> None:
+            pcm, self._play = self._play, None
+            if pcm:
+                await self.push_frame(
+                    OutputAudioRawFrame(audio=pcm, sample_rate=chime_sample_rate, num_channels=1),
+                    direction,
+                )
 
         async def process_frame(self, frame: Frame, direction: FrameDirection):
             await super().process_frame(frame, direction)
             if isinstance(frame, InputAudioRawFrame):
-                if gate.feed(frame.audio):
+                passed = gate.feed(frame.audio)
+                await self._flush_chime(direction)
+                if passed:
                     await self.push_frame(frame, direction)
                 return
             if isinstance(frame, (UserStartedSpeakingFrame, BotStartedSpeakingFrame)):

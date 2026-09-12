@@ -1,5 +1,7 @@
+import struct
 from pathlib import Path
 
+from ned.audio.chime import SLEEP_TONES, WAKE_TONES, chime, tone
 from ned.audio.wake import WakeGate, score_meter
 
 
@@ -120,3 +122,17 @@ def test_score_meter_prints_peak_per_line_and_flags_wakes():
     assert len(lines) == 2
     assert lines[0].startswith(" 0.30 |") and "WAKE" not in lines[0]
     assert lines[1].startswith(" 0.90 |") and lines[1].endswith("WAKE")
+
+
+def test_tone_is_pcm16_of_the_right_length_and_starts_quiet():
+    pcm = tone(440.0, 0.05, 16000)
+    assert len(pcm) == int(16000 * 0.05) * 2  # 16-bit mono
+    first, last = struct.unpack("<h", pcm[:2])[0], struct.unpack("<h", pcm[-2:])[0]
+    assert abs(first) < 100 and abs(last) < 100  # faded in and out: no click
+    assert max(abs(v) for v in struct.unpack(f"<{len(pcm) // 2}h", pcm)) > 1000
+
+
+def test_wake_and_sleep_chimes_differ_and_are_short():
+    w, s = chime(WAKE_TONES, 16000), chime(SLEEP_TONES, 16000)
+    assert w != s
+    assert len(w) / 2 / 16000 < 0.25  # under a quarter second

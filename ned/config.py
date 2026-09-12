@@ -72,6 +72,7 @@ class Config:
     wake_verifier_threshold: float = 0.1
     follow_up_secs: float = 8.0
     mute_file: Path = Path("/etc/ned/mute")
+    wake_chime: bool = True  # short tone when Ned starts and stops listening
 
     # Model
     model: str = "claude-sonnet-5"  # docs/decisions/0002-chat-model.md
@@ -133,6 +134,7 @@ class Config:
             wake_verifier_threshold=num("NED_WAKE_VERIFIER_THRESHOLD", 0.1),
             follow_up_secs=num("NED_FOLLOW_UP_SECS", 8.0),
             mute_file=Path(e.get("NED_MUTE_FILE", "/etc/ned/mute")),
+            wake_chime=(e.get("NED_WAKE_CHIME", "1").strip().lower() not in ("0", "false", "no")),
             model=e.get("NED_MODEL", "claude-sonnet-5"),
             effort=e.get("NED_EFFORT", "low"),
             thinking=e.get("NED_THINKING", "adaptive"),

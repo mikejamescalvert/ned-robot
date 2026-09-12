@@ -27,6 +27,21 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
+**2026-09-12 — The wake model does not detect the wake word.** `ned-agent wakescore` on the
+Pi: a real "hey ned" peaks at **0.25**, the word "apples" hits **0.86**. The synthetic model
+responds to speech, not to the phrase, so every threshold trades false wakes against missed
+wakes with no setting that does both. Explains the whole week of wake-word trouble.
+
+Working around it with the personal verifier, which is the only component trained on Mike's
+real voice: base threshold low so the verifier is always consulted, `NED_WAKE_THRESHOLD`
+strict because it applies to the verifier's output, and enough clips (15+ per side, negatives
+including the words that false-wake) for the verifier to be confident. The durable fix is
+retraining the base model with real recordings mixed into the synthetic set; the clips in
+`~/ned-wake/positive` are the input. See docs/wakeword.md.
+
+Ned otherwise runs clean as a systemd service: finds the array, loads the verifier, connects
+to Flux, waits for the wake word.
+
 **2026-09-12 — Sonnet 5 A/B, 24 turns.** Claude's first byte fell from 1427 ms to 900 ms,
 but first sound only moved from 1786 ms to 1700 ms. The half second Claude gave back mostly
 did not reach the speaker, so the rest of the turn is now the problem:

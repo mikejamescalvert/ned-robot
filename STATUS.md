@@ -5,11 +5,15 @@ See `PROJECT.md` for the rules.
 
 ## Current phase
 
-**Phase 0 — Desk brain, no wheels.** The loop runs on hardware as of 2026-09-09 (see below).
-Latest measurement 2026-09-12 (below): 1.70 s to first sound on Sonnet 5, target 1.5 s.
-Remaining for the phase gate: latency only. Everything else passes; see below.
+**Phase 0 — COMPLETE, signed off 2026-09-12, tagged `phase-0`.** Every criterion met; Mike
+accepted 1.70 s against the 1.5 s target after judging the conversation "very conversational"
+in use. Latency stays an open improvement, not a blocker.
 
-## Hardware on order (Phase 0)
+**Phase 1 — Motion layer.** Not started. First action: order the iRobot Create 3 (education
+channel; verify stock and that the firmware supports ROS 2 Jazzy at purchase time). Parts list
+in `BOM.md`, Phase 1. Decide the camera mast height before the faceplate layout.
+
+## Hardware in service (Phase 0, complete)
 
 - Raspberry Pi 5, 16GB
 - Seeed reSpeaker XVF3800 USB 4-Mic Array, with case. **Swapped in for the Mic Array v2.0**,
@@ -27,14 +31,19 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
-**2026-09-12 — Phase 0 behaviours all pass; latency is the one open item.**
+**2026-09-12 — PHASE 0 SIGNED OFF.**
 
 | Phase 0 criterion | state |
 |---|---|
 | 3-turn spoken conversation, six feet, no keyboard | pass |
 | barge-in (talking over Ned stops him) | pass |
 | survives a reboot and answers unattended | pass |
-| **at target latency (1.5 s end of speech → first syllable)** | **1.70 s, not met** |
+| at target latency (1.5 s end of speech → first syllable) | 1.70 s, **accepted by Mike** |
+
+On the latency: Mike's call, on the grounds that it "seemed very conversational" in real use.
+The number a person feels is nearer 1.9 s, since "end of speech" is the voice detector's stop
+200 ms after the last word. Worth remembering before believing any single figure. The two
+untried levers below stay on the list as improvements, not blockers.
 
 Wake is solved: the personal verifier trained on 20 clips per side scores real wakes at 0.61
 and 0.69 against a 0.5 threshold, and no longer fires on "apples". Cost is about $0.0028 a

@@ -39,7 +39,7 @@ async def run(cfg: Config) -> None:
     devices = list_pyaudio_devices()
     idx = pick_device(devices, cfg.audio_device_match)
     if idx is None:
-        raise ConfigError(f"no audio device matching {cfg.audio_device_match!r}; saw {devices}")
+        raise ConfigError(_no_device_message(cfg.audio_device_match, devices))
     logger.info(f"audio device {idx}: {dict(devices)[idx]}")
 
     transport = LocalAudioTransport(
@@ -150,6 +150,30 @@ async def run(cfg: Config) -> None:
     await runner.run()
 
 
+def _no_device_message(match: str, devices: list[tuple[int, str]]) -> str:
+    """Explain a missing microphone in terms of what to actually do about it.
+
+    An empty list is a different failure from a device with the wrong name: the Pi 5 has no
+    analog audio, so the USB array is the only sound card on the machine. Zero devices means
+    it fell off the bus, which USB devices do.
+    """
+    if not devices:
+        return (
+            "no audio devices at all. Most likely Ned is already running as a service and "
+            "holding the microphone: PortAudio probes each device while listing them, so one "
+            "that is busy disappears from the list rather than reporting an error, and the "
+            "Pi 5 has no built-in analog audio to fall back on. Check `systemctl is-active "
+            "ned-agent`; if it is active, `sudo systemctl stop ned-agent` before running by "
+            "hand. Otherwise the USB array has dropped off the bus: check `lsusb | grep -i "
+            "2886` and `arecord -l`, then replug it or reboot."
+        )
+    seen = ", ".join(f"{i}: {name}" for i, name in devices)
+    return (
+        f"no audio device matching {match!r} (NED_AUDIO_DEVICE). Devices seen: {seen}. "
+        "Set NED_AUDIO_DEVICE to a distinctive part of the right name."
+    )
+
+
 @contextlib.contextmanager
 def _mic(cfg: Config):
     """Open the array mic once and hand back a chunk reader. Pi only (PyAudio).
@@ -166,7 +190,7 @@ def _mic(cfg: Config):
         devices = list_pyaudio_devices(pa)
         idx = pick_device(devices, cfg.audio_device_match)
         if idx is None:
-            raise ConfigError(f"no audio device matching {cfg.audio_device_match!r}; saw {devices}")
+            raise ConfigError(_no_device_message(cfg.audio_device_match, devices))
         frames = wake.OpenWakeWordDetector.FRAME_SAMPLES
         with quiet_stderr():
             stream = pa.open(

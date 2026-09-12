@@ -95,3 +95,27 @@ observation that Phase 0 setup requires.
   `1`, or pull `main` and rerun `deploy/ned-remote.sh`.
 - **`ned-<word>-<word>` sessions appear and vanish**: the account has "Enable Remote Control
   for all sessions" on, so every interactive `claude` on the Pi registers briefly. Harmless.
+
+## Running Ned as a service
+
+Once the wake word behaves, stop babysitting it in SSH:
+
+```
+sudo cp ~/ned-robot/deploy/ned-agent.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now ned-agent
+```
+
+Day to day:
+
+| | |
+|---|---|
+| is it alive | `systemctl is-active ned-agent` |
+| watch the log | `journalctl -u ned-agent -f` |
+| after a `git pull` | `sudo systemctl restart ned-agent` |
+| silence it | `sudo systemctl stop ned-agent` |
+
+**Only one process can hold the microphone.** With the service running, `ned-agent run`,
+`wakescore`, and `record` all fail with "no audio devices at all", because PortAudio drops a
+busy device from its list rather than reporting it as busy, and the Pi 5 has no other sound
+card. Stop the service first, then start it again when you are done.

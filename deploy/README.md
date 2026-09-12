@@ -96,6 +96,28 @@ observation that Phase 0 setup requires.
 - **`ned-<word>-<word>` sessions appear and vanish**: the account has "Enable Remote Control
   for all sessions" on, so every interactive `claude` on the Pi registers briefly. Harmless.
 
+## Ned hears you but never answers
+
+Playback volume. The array comes up around 67%, which ALSA reports as **-20 dB** and which is
+inaudible through the Pebble, so Ned looks broken while the log happily records completed
+turns and their cost. ALSA also forgets mixer levels across reboots unless they are stored,
+which is why this can appear after a restart on a rig that worked yesterday.
+
+```
+amixer -c 0 sset 'PCM',0 100%
+amixer -c 0 sset 'PCM',1 100%
+speaker-test -D plughw:0,0 -c 2 -t sine -f 440 -l 1   # should be audible
+sudo alsactl store                                     # survives the next reboot
+```
+
+`deploy/check-audio.sh` now does all of that for you. If a tone still does not play, the fault
+is past the array: the Pebble's power, its volume knob, or the 3.5mm cable. The Pi 5 has no
+headphone socket, so that cable belongs in the **array's** jack.
+
+Diagnosing from the log: `turn logged; session cost $0.00xx` means Claude answered and the
+audio reached the output transport. Seeing that line and hearing nothing puts the fault in the
+speaker path, never in the code.
+
 ## Running Ned as a service
 
 Once the wake word behaves, stop babysitting it in SSH:

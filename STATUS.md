@@ -27,6 +27,20 @@ array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
 
+**2026-09-12 — Phase 0 loop works at six feet.** With the retrained verifier (20 clips per
+side) wake scores land at 0.61 and 0.69 against a 0.5 threshold. Conversation from six feet
+works, barge-in works, turns log at about $0.0028 each.
+
+Two gotchas, both resolved, both now in `deploy/`:
+
+- **Silent Ned after a reboot.** Array playback volume defaults to ~67%, which is -20 dB and
+  inaudible through the Pebble, and ALSA forgets mixer levels across reboots unless stored.
+  The log showed completed turns the whole time. `amixer ... 100%` then `sudo alsactl store`.
+  `check-audio.sh` now sets and saves this.
+- **"No audio devices at all"** when running by hand while the service holds the microphone.
+  PortAudio drops a busy device from its list rather than reporting it busy, and the Pi 5 has
+  no other sound card. Stop the service first.
+
 **2026-09-12 — The wake model does not detect the wake word.** `ned-agent wakescore` on the
 Pi: a real "hey ned" peaks at **0.25**, the word "apples" hits **0.86**. The synthetic model
 responds to speech, not to the phrase, so every threshold trades false wakes against missed

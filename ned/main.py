@@ -7,6 +7,7 @@ sibling modules and is unit tested; this file is wiring. See docs/decisions/0001
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import sys
 from pathlib import Path
@@ -15,7 +16,7 @@ from loguru import logger
 
 from ned import telemetry
 from ned.audio import wake
-from ned.audio.devices import list_pyaudio_devices, pick_device
+from ned.audio.devices import list_pyaudio_devices, open_pyaudio, pick_device
 from ned.config import Config, ConfigError
 from ned.tools import clock
 
@@ -149,33 +150,48 @@ async def run(cfg: Config) -> None:
     await runner.run()
 
 
-def _mic_chunks(cfg: Config, seconds: float | None):
-    """Yield 80 ms pcm16 chunks from the array mic. Pi only (PyAudio)."""
+@contextlib.contextmanager
+def _mic(cfg: Config):
+    """Open the array mic once and hand back a chunk reader. Pi only (PyAudio).
+
+    PortAudio start-up is slow and noisy, so commands that record repeatedly (the verifier
+    clips) open it once around the whole loop rather than once per clip.
+    """
     import pyaudio
 
-    devices = list_pyaudio_devices()
-    idx = pick_device(devices, cfg.audio_device_match)
-    if idx is None:
-        raise ConfigError(f"no audio device matching {cfg.audio_device_match!r}; saw {devices}")
-    pa = pyaudio.PyAudio()
-    frames = wake.OpenWakeWordDetector.FRAME_SAMPLES
-    stream = pa.open(
-        format=pyaudio.paInt16,
-        channels=1,
-        rate=cfg.sample_rate_in,
-        input=True,
-        input_device_index=idx,
-        frames_per_buffer=frames,
-    )
-    total = None if seconds is None else int(seconds * cfg.sample_rate_in / frames)
+    from ned.audio.devices import quiet_stderr
+
+    pa = open_pyaudio()
     try:
-        n = 0
-        while total is None or n < total:
-            yield stream.read(frames, exception_on_overflow=False)
-            n += 1
+        devices = list_pyaudio_devices(pa)
+        idx = pick_device(devices, cfg.audio_device_match)
+        if idx is None:
+            raise ConfigError(f"no audio device matching {cfg.audio_device_match!r}; saw {devices}")
+        frames = wake.OpenWakeWordDetector.FRAME_SAMPLES
+        with quiet_stderr():
+            stream = pa.open(
+                format=pyaudio.paInt16,
+                channels=1,
+                rate=cfg.sample_rate_in,
+                input=True,
+                input_device_index=idx,
+                frames_per_buffer=frames,
+            )
+
+        def chunks(seconds: float | None):
+            """Yield 80 ms pcm16 chunks; ``None`` seconds means until the caller stops."""
+            total = None if seconds is None else int(seconds * cfg.sample_rate_in / frames)
+            n = 0
+            while total is None or n < total:
+                yield stream.read(frames, exception_on_overflow=False)
+                n += 1
+
+        try:
+            yield chunks
+        finally:
+            stream.stop_stream()
+            stream.close()
     finally:
-        stream.stop_stream()
-        stream.close()
         pa.terminate()
 
 
@@ -192,7 +208,8 @@ def wakescore(cfg: Config) -> int:
         f"verifier {'on' if detector.verifier_active else 'off'}   (Ctrl+C to stop)"
     )
     try:
-        wake.score_meter(detector, _mic_chunks(cfg, None), cfg.wake_threshold)
+        with _mic(cfg) as chunks:
+            wake.score_meter(detector, chunks(None), cfg.wake_threshold)
     except KeyboardInterrupt:
         pass
     return 0
@@ -210,20 +227,22 @@ def record_clips(cfg: Config, kind: str, count: int, seconds: float = 2.0) -> in
         if kind == "positive"
         else "say anything that is NOT the wake word (a sentence, a name, a cough)"
     )
-    for i in range(count):
-        n = len(list(out_dir.glob("*.wav"))) + 1
-        path = out_dir / f"{n:02d}.wav"
-        print(f"[{i + 1}/{count}] in 1 second, {prompt}")
-        time.sleep(1.0)
-        print("   recording...")
-        data = b"".join(_mic_chunks(cfg, seconds))
-        with wave.open(str(path), "wb") as w:
-            w.setnchannels(1)
-            w.setsampwidth(2)
-            w.setframerate(cfg.sample_rate_in)
-            w.writeframes(data)
-        print(f"   saved {path}")
-        time.sleep(0.5)
+    with _mic(cfg) as chunks:
+        for i in range(count):
+            n = len(list(out_dir.glob("*.wav"))) + 1
+            path = out_dir / f"{n:02d}.wav"
+            print(f"[{i + 1}/{count}] in 1 second, {prompt}", flush=True)
+            time.sleep(1.0)
+            print("   recording...", flush=True)
+            data = b"".join(chunks(seconds))
+            with wave.open(str(path), "wb") as w:
+                w.setnchannels(1)
+                w.setsampwidth(2)
+                w.setframerate(cfg.sample_rate_in)
+                w.writeframes(data)
+            print(f"   saved {path.name}", flush=True)
+            time.sleep(0.5)
+    print(f"{count} clips in {out_dir}")
     return 0
 
 

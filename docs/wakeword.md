@@ -76,6 +76,11 @@ Three levers, cheapest first. Each one is independent; stop when it is quiet.
    uv run --extra pi ned-agent train-verifier
    ```
 
+   The recorder opens the microphone once for the whole run, so the ALSA and JACK warnings
+   (hdmi, rear, modem, "jack server is not running") appear at most once instead of burying
+   every prompt. They are harmless: this Pi has no HDMI audio and no JACK server, and
+   PortAudio says so on start-up.
+
    Writes `models/hey_ned_verifier.pkl` next to the wake model; the next `ned-agent run`
    picks it up (the start-up log says `verifier on`). Commit it from Ned Brain. Vary the
    positives: normal, quiet, across the room, mid-sentence. Negatives should include

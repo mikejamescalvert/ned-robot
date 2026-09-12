@@ -40,6 +40,7 @@ def llm_cost_usd(
 class Turn:
     started: float
     end_of_speech: float | None = None
+    llm_started: float | None = None  # request sent: everything before this is turn detection
     first_token: float | None = None
     llm_done: float | None = None
     first_tts_audio: float | None = None
@@ -57,6 +58,7 @@ class Turn:
             return None if a is None or b is None else round((b - a) * 1000)
 
         return {
+            "speech_to_llm_request": d(self.end_of_speech, self.llm_started),
             "speech_to_first_token": d(self.end_of_speech, self.first_token),
             "speech_to_llm_done": d(self.end_of_speech, self.llm_done),
             "speech_to_first_tts_audio": d(self.end_of_speech, self.first_tts_audio),
@@ -74,6 +76,10 @@ class TurnTracker:
 
     def user_stopped(self):
         self.turn = Turn(started=self.clock(), end_of_speech=self.clock())
+
+    def llm_started(self):
+        if self.turn and self.turn.llm_started is None:
+            self.turn.llm_started = self.clock()
 
     def first_token(self):
         if self.turn and self.turn.first_token is None:
@@ -145,15 +151,49 @@ def jsonl_sink(log_dir: Path) -> Callable[[dict], None]:
     return write
 
 
+def build_llm_tap(tracker: TurnTracker):
+    """Processor placed between the LLM and TTS. Passes everything through.
+
+    The TTS service consumes LLM text frames and does not forward them, so anything that
+    wants to see the first token has to sit upstream of it. Stamps: request sent, first
+    token back, response finished.
+    """
+    from pipecat.frames.frames import (
+        Frame,
+        LLMFullResponseEndFrame,
+        LLMFullResponseStartFrame,
+        LLMTextFrame,
+    )
+    from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+
+    class LLMTap(FrameProcessor):
+        def __init__(self):
+            super().__init__(name="LLMTap")
+
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame, direction)
+            if isinstance(frame, LLMFullResponseStartFrame):
+                tracker.llm_started()
+            elif isinstance(frame, LLMTextFrame):
+                tracker.first_token()
+            elif isinstance(frame, LLMFullResponseEndFrame):
+                tracker.llm_done()
+            await self.push_frame(frame, direction)
+
+    return LLMTap()
+
+
 def build_processor(tracker: TurnTracker):
-    """Pipecat processor that feeds the tracker from pipeline frames. Passes everything through."""
+    """Pipecat processor placed after TTS. Passes everything through.
+
+    Sees TTS and transport frames (first audio, bot speaking) and the metrics frames from
+    every service. LLM text never reaches here; see ``build_llm_tap``.
+    """
     from loguru import logger
     from pipecat.frames.frames import (
         BotStartedSpeakingFrame,
         BotStoppedSpeakingFrame,
         Frame,
-        LLMFullResponseEndFrame,
-        LLMTextFrame,
         MetricsFrame,
         TTSStartedFrame,
         UserStoppedSpeakingFrame,
@@ -169,13 +209,6 @@ def build_processor(tracker: TurnTracker):
             await super().process_frame(frame, direction)
             if isinstance(frame, UserStoppedSpeakingFrame):
                 tracker.user_stopped()
-            elif isinstance(frame, LLMTextFrame):
-                # Not LLMFullResponseStartFrame: that fires when the request is *sent*, which
-                # read as a 1 ms "first token" on hardware. The first text frame is the first
-                # token actually back from the model.
-                tracker.first_token()
-            elif isinstance(frame, LLMFullResponseEndFrame):
-                tracker.llm_done()
             elif isinstance(frame, TTSStartedFrame):
                 tracker.first_tts_audio()
             elif isinstance(frame, BotStartedSpeakingFrame):
@@ -234,6 +267,7 @@ def _summarize(records: list[dict]) -> dict:
         else 0.0,
     }
     for key in (
+        "speech_to_llm_request",
         "speech_to_first_token",
         "speech_to_llm_done",
         "speech_to_first_tts_audio",

@@ -6,7 +6,7 @@ See `PROJECT.md` for the rules.
 ## Current phase
 
 **Phase 0 — Desk brain, no wheels.** The loop runs on hardware as of 2026-09-09 (see below).
-First latency measurement taken 2026-09-09 (below): 1.79 s to first sound, target 1.5 s.
+Latest measurement 2026-09-12 (below): 1.70 s to first sound on Sonnet 5, target 1.5 s.
 Remaining for the phase gate: the 3-turn conversation from six feet and the barge-in check.
 
 ## Hardware on order (Phase 0)
@@ -26,6 +26,26 @@ Wiring: Pi USB → mic array. Mic array 3.5mm → Pebble aux in. Playback must g
 array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
+
+**2026-09-12 — Sonnet 5 A/B, 24 turns.** Claude's first byte fell from 1427 ms to 900 ms,
+but first sound only moved from 1786 ms to 1700 ms. The half second Claude gave back mostly
+did not reach the speaker, so the rest of the turn is now the problem:
+
+| stage (p50, Sonnet) | ms |
+|---|---|
+| end of speech → LLM request sent | ~400 (turn detection; measured directly from now on) |
+| LLM first byte | 900 |
+| first sentence → TTS first byte | 135 |
+| TTS audio → speaker | ~160 |
+| **end of speech → first sound** | **1700** (target 1500) |
+
+Note "end of speech" is the VAD stop, which fires 200 ms after the last word, so the number
+a person feels is about 1.9 s. Decision 0002 accepted anyway: Sonnet is better on every
+axis and Opus was buying nothing for 19-token replies. Cost per turn rose to $0.0029
+because the session was longer (context grows every turn) and included tool calls, not
+because of the model. Next levers, in order: `NED_THINKING=disabled` (env only),
+`NED_EOT_THRESHOLD` lower than 0.7, then eager end-of-turn. First-token telemetry had to
+move upstream of TTS, which eats text frames; fixed the same day.
 
 **2026-09-09 — First latency numbers.** `ned-agent stats` over 18 turns, one desk session:
 
@@ -119,6 +139,8 @@ Cloud: nothing blocking. Next code is whatever the first run on hardware reveals
 - 2026-09-08 — Voice stack researched (three parallel tracks) and proposed as decision 0001.
   PROJECT.md architecture corrected: Messages API via Pipecat, not the Agent SDK, in the
   voice path. Remote Control session named "Ned Brain".
+- 2026-09-12 — Sonnet 5 measured: 1.70 s p50 to first sound, Claude 900 ms. Decision 0002
+  accepted. Telemetry now stamps LLM request start upstream of TTS; Flux EOT knobs added.
 - 2026-09-10 — First tool: `get_time`. Ned no longer says "I don't have a clock". Exercises the
   Pipecat function-calling path that `drive_to` will use.
 - 2026-09-09 — Design: Telegram bot as a second transport in Phase 4 (caller, not a body).

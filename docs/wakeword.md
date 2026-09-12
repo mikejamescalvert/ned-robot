@@ -40,6 +40,30 @@ Ned plays a short rising two-tone chime the moment he starts listening, and a fa
 when he stops. `NED_WAKE_CHIME=0` turns it off. A visual cue comes with the camera mast LED
 in Phase 3, which is already planned for "camera live" and can double as "listening".
 
+## The base model does not actually detect "hey ned" (measured 2026-09-12)
+
+On hardware, `wakescore` gave **0.25 for a real "hey ned" and 0.86 for the word "apples"**.
+The synthetic model fires on speech in general, not on the target phrase, so no threshold
+separates the two in the right direction: low enough to wake on 0.25 also wakes on anything
+said nearby. This is the root cause of both the false wakes and the missed wakes below, and
+it is why threshold tuning kept trading one for the other.
+
+**Work around it with the verifier, which is the only part trained on Mike's real voice.**
+Let the base model be a cheap "somebody spoke" trigger and let the verifier decide:
+
+- `NED_WAKE_VERIFIER_THRESHOLD` (default 0.1) is the base score at which the verifier is
+  consulted. Leave it low.
+- `NED_WAKE_THRESHOLD` then applies to the **verifier's** output, not the base model's. Keep
+  it strict (0.5). Lowering it, which is the instinct when wakes are missed, defeats the one
+  component that works.
+- The verifier needs enough examples to be confident. Ten clips produce a logistic regression
+  that is unsure about everything, including genuine wakes. Aim for 15 or more of each, and
+  put the actual false-wake words ("apples", "hey Ted", ordinary sentences) in the negatives.
+
+**The real fix is retraining the base model** with real recordings mixed into the synthetic
+set, using the clips in `~/ned-wake/positive`. Same notebook, a couple of hours. Do it once
+the verifier has you working, not before.
+
 ## Missed wakes (saying "hey ned" three times)
 
 The synthetic model's recall is mediocre; on the first hardware day it caught about half of

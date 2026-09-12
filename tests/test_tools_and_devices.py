@@ -81,3 +81,15 @@ def test_quiet_stderr_restores_after_an_exception(capfd):
             raise ValueError("boom")
     os.write(2, b"still working\n")
     assert "still working" in capfd.readouterr().err
+
+
+def test_no_device_message_distinguishes_empty_from_mismatch():
+    from ned.main import _no_device_message
+
+    empty = _no_device_message("Array", [])
+    assert "systemctl stop ned-agent" in empty  # the likeliest cause, named first
+    assert "dropped off the bus" in empty and "lsusb" in empty
+
+    wrong = _no_device_message("Array", [(0, "bcm2835 Headphones")])
+    assert "NED_AUDIO_DEVICE" in wrong and "bcm2835 Headphones" in wrong
+    assert "dropped off the bus" not in wrong and "systemctl" not in wrong

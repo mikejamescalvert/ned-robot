@@ -70,7 +70,18 @@ async def run(cfg: Config) -> None:
         mute_file=cfg.mute_file,
     )
 
-    stt = DeepgramFluxSTTService(api_key=cfg.deepgram_api_key, sample_rate=cfg.sample_rate_in)
+    flux = DeepgramFluxSTTService.Settings()
+    if cfg.eot_threshold is not None:
+        flux.eot_threshold = cfg.eot_threshold
+    if cfg.eager_eot_threshold is not None:
+        flux.eager_eot_threshold = cfg.eager_eot_threshold
+    logger.info(
+        f"flux: eot_threshold {cfg.eot_threshold or 'default'}, "
+        f"eager {cfg.eager_eot_threshold or 'off'}"
+    )
+    stt = DeepgramFluxSTTService(
+        api_key=cfg.deepgram_api_key, sample_rate=cfg.sample_rate_in, settings=flux
+    )
 
     tts = CartesiaTTSService(
         api_key=cfg.cartesia_api_key,
@@ -109,6 +120,7 @@ async def run(cfg: Config) -> None:
             stt,
             user_agg,
             llm,
+            telemetry.build_llm_tap(tracker),  # first token is only visible before tts
             tts,
             # After tts so it sees LLM/TTS timing and usage frames flowing down, and the
             # transport's bot-speaking frames flowing back up.

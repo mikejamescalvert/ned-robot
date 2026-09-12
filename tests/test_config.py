@@ -93,3 +93,12 @@ def test_from_env_falls_back_to_env_file(tmp_path, monkeypatch):
     cfg = Config.from_env()
     assert cfg.anthropic_api_key == "a"
     assert cfg.body == "shell"
+
+
+def test_flux_turn_knobs_default_to_none_and_parse():
+    cfg = Config.from_env(GOOD)
+    assert cfg.eot_threshold is None and cfg.eager_eot_threshold is None
+    cfg = Config.from_env({**GOOD, "NED_EOT_THRESHOLD": "0.6", "NED_EAGER_EOT_THRESHOLD": ""})
+    assert cfg.eot_threshold == 0.6 and cfg.eager_eot_threshold is None
+    with pytest.raises(ConfigError, match="NED_EOT_THRESHOLD"):
+        Config.from_env({**GOOD, "NED_EOT_THRESHOLD": "soon"})

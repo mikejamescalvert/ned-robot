@@ -25,7 +25,9 @@ def test_turn_record_latencies_and_cost():
     out = []
     t = TurnTracker("claude-opus-5", out.append, clock=clock)
     t.user_stopped()
-    clock.t += 0.4
+    clock.t += 0.1
+    t.llm_started()
+    clock.t += 0.3
     t.first_token()
     clock.t += 0.1
     t.llm_done()
@@ -39,6 +41,7 @@ def test_turn_record_latencies_and_cost():
     t.bot_stopped()
     assert len(out) == 1
     r = out[0]
+    assert r["speech_to_llm_request"] == 100
     assert r["speech_to_first_token"] == 400
     assert r["speech_to_llm_done"] == 500
     assert r["speech_to_first_tts_audio"] == 600

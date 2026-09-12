@@ -7,7 +7,7 @@ See `PROJECT.md` for the rules.
 
 **Phase 0 — Desk brain, no wheels.** The loop runs on hardware as of 2026-09-09 (see below).
 Latest measurement 2026-09-12 (below): 1.70 s to first sound on Sonnet 5, target 1.5 s.
-Remaining for the phase gate: the 3-turn conversation from six feet and the barge-in check.
+Remaining for the phase gate: latency only. Everything else passes; see below.
 
 ## Hardware on order (Phase 0)
 
@@ -26,6 +26,25 @@ Wiring: Pi USB → mic array. Mic array 3.5mm → Pebble aux in. Playback must g
 array's jack or its AEC has nothing to cancel against.
 
 ## Last hardware observation (surface B)
+
+**2026-09-12 — Phase 0 behaviours all pass; latency is the one open item.**
+
+| Phase 0 criterion | state |
+|---|---|
+| 3-turn spoken conversation, six feet, no keyboard | pass |
+| barge-in (talking over Ned stops him) | pass |
+| survives a reboot and answers unattended | pass |
+| **at target latency (1.5 s end of speech → first syllable)** | **1.70 s, not met** |
+
+Wake is solved: the personal verifier trained on 20 clips per side scores real wakes at 0.61
+and 0.69 against a 0.5 threshold, and no longer fires on "apples". Cost is about $0.0028 a
+turn. Ned runs as a systemd service, enabled, and came back on his own after a power cycle.
+
+The remaining 200 ms has two untried env-only levers, in order: `NED_THINKING=disabled`
+(Sonnet was emitting 36 tokens a turn against Opus's 19, which smells like thinking tokens)
+and `NED_EOT_THRESHOLD` below the 0.7 default (about 400 ms goes to deciding the turn ended
+before the request is even sent). Measure each with `ned-agent stats`, which now reports
+`speech_to_llm_request` separately.
 
 **2026-09-12 — Phase 0 loop works at six feet.** With the retrained verifier (20 clips per
 side) wake scores land at 0.61 and 0.69 against a 0.5 threshold. Conversation from six feet

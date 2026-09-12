@@ -1,6 +1,6 @@
 import pytest
 
-from ned.audio.devices import pick_device
+from ned.audio.devices import pick_device, quiet_stderr
 from ned.memory import InMemory
 from ned.tools import body_property, tool_schema
 from ned.tools.clock import SCHEMA, now_facts
@@ -59,3 +59,25 @@ def test_clock_schema_takes_no_arguments():
     assert SCHEMA["name"] == "get_time"
     assert SCHEMA["input_schema"]["properties"] == {}
     assert SCHEMA["input_schema"]["required"] == []
+
+
+def test_quiet_stderr_silences_c_level_writes_and_restores(capfd):
+    import os
+
+    os.write(2, b"before\n")
+    with quiet_stderr():
+        os.write(2, b"ALSA lib pcm.c: noise\n")  # what PortAudio does, bypassing sys.stderr
+    os.write(2, b"after\n")
+    err = capfd.readouterr().err
+    assert "noise" not in err  # the whole point: C libraries writing straight to fd 2
+    assert "before" in err and "after" in err  # and fd 2 still works afterwards
+
+
+def test_quiet_stderr_restores_after_an_exception(capfd):
+    import os
+
+    with pytest.raises(ValueError):
+        with quiet_stderr():
+            raise ValueError("boom")
+    os.write(2, b"still working\n")
+    assert "still working" in capfd.readouterr().err

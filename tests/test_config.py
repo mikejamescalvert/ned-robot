@@ -21,6 +21,7 @@ def test_from_env_reads_required_and_defaults():
     assert cfg.wake_consecutive_frames == 2
     assert cfg.wake_vad_threshold == 0.5
     assert cfg.wake_verifier_path.name == "hey_ned_verifier.pkl"
+    assert cfg.wake_chime is True
 
 
 def test_missing_secret_is_an_error():
@@ -93,3 +94,18 @@ def test_from_env_falls_back_to_env_file(tmp_path, monkeypatch):
     cfg = Config.from_env()
     assert cfg.anthropic_api_key == "a"
     assert cfg.body == "shell"
+
+
+def test_wake_chime_can_be_turned_off():
+    assert Config.from_env({**GOOD, "NED_WAKE_CHIME": "0"}).wake_chime is False
+    assert Config.from_env({**GOOD, "NED_WAKE_CHIME": "false"}).wake_chime is False
+    assert Config.from_env({**GOOD, "NED_WAKE_CHIME": "1"}).wake_chime is True
+
+
+def test_flux_turn_knobs_default_to_none_and_parse():
+    cfg = Config.from_env(GOOD)
+    assert cfg.eot_threshold is None and cfg.eager_eot_threshold is None
+    cfg = Config.from_env({**GOOD, "NED_EOT_THRESHOLD": "0.6", "NED_EAGER_EOT_THRESHOLD": ""})
+    assert cfg.eot_threshold == 0.6 and cfg.eager_eot_threshold is None
+    with pytest.raises(ConfigError, match="NED_EOT_THRESHOLD"):
+        Config.from_env({**GOOD, "NED_EOT_THRESHOLD": "soon"})

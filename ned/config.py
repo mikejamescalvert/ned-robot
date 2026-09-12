@@ -72,6 +72,11 @@ class Config:
     wake_verifier_threshold: float = 0.1
     follow_up_secs: float = 8.0
     mute_file: Path = Path("/etc/ned/mute")
+    wake_chime: bool = True  # short tone when Ned starts and stops listening
+
+    # Turn detection (Deepgram Flux). None = Pipecat/Deepgram defaults (0.7, off).
+    eot_threshold: float | None = None
+    eager_eot_threshold: float | None = None
 
     # Model
     model: str = "claude-sonnet-5"  # docs/decisions/0002-chat-model.md
@@ -104,6 +109,15 @@ class Config:
                 raise ConfigError(f"{name} is not set (expected in /etc/ned/env)")
             return v
 
+        def optnum(name: str) -> float | None:
+            raw = (e.get(name) or "").strip()
+            if not raw:
+                return None
+            try:
+                return float(raw)
+            except ValueError as err:
+                raise ConfigError(f"{name}={raw!r} is not a number") from err
+
         def num(name: str, default: float, kind=float):
             raw = e.get(name)
             if raw is None or raw == "":
@@ -133,6 +147,9 @@ class Config:
             wake_verifier_threshold=num("NED_WAKE_VERIFIER_THRESHOLD", 0.1),
             follow_up_secs=num("NED_FOLLOW_UP_SECS", 8.0),
             mute_file=Path(e.get("NED_MUTE_FILE", "/etc/ned/mute")),
+            wake_chime=(e.get("NED_WAKE_CHIME", "1").strip().lower() not in ("0", "false", "no")),
+            eot_threshold=optnum("NED_EOT_THRESHOLD"),
+            eager_eot_threshold=optnum("NED_EAGER_EOT_THRESHOLD"),
             model=e.get("NED_MODEL", "claude-sonnet-5"),
             effort=e.get("NED_EFFORT", "low"),
             thinking=e.get("NED_THINKING", "adaptive"),

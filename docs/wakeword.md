@@ -34,6 +34,20 @@ Tuning knobs on the Pi (in `/etc/ned/env`): `NED_WAKE_THRESHOLD` (0.5 default; r
 threshold; 2 default). The mute file `/etc/ned/mute` disables listening entirely:
 `touch /etc/ned/mute` before a client call, `rm` it after.
 
+## Did he hear me?
+
+Ned plays a short rising two-tone chime the moment he starts listening, and a falling one
+when he stops. `NED_WAKE_CHIME=0` turns it off. A visual cue comes with the camera mast LED
+in Phase 3, which is already planned for "camera live" and can double as "listening".
+
+## Missed wakes (saying "hey ned" three times)
+
+The synthetic model's recall is mediocre; on the first hardware day it caught about half of
+real attempts at threshold 0.5. Tightening the threshold to stop false wakes makes this
+worse, so do not fight the two problems with the same knob. **Train the personal verifier
+(step 3 below) and the trade-off goes away**: set `NED_WAKE_THRESHOLD` back to 0.5 with
+`NED_WAKE_FRAMES=1`, and let the verifier make the final call on your voice.
+
 ## False wakes (Ned waking when nobody said "hey ned")
 
 Three levers, cheapest first. Each one is independent; stop when it is quiet.

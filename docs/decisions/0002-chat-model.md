@@ -1,6 +1,8 @@
 # 0002 — Chat model: Sonnet 5 by default, tiered by activity later
 
-Status: **proposed 2026-09-09**, accepted when a Sonnet 5 run on the Pi lands under 1.5 s p50.
+Status: **accepted 2026-09-12.** Measured on the Pi over 24 turns: Claude first byte 900 ms
+(was 1427 ms on Opus 5), first sound 1700 ms (was 1786 ms). Still over the 1.5 s target, but
+the remaining gap is turn detection and TTS, not the model; see STATUS.md 2026-09-12.
 Amends the LLM row of [0001](0001-voice-stack.md).
 
 ## Context
